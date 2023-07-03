@@ -14,7 +14,6 @@ class XRayDiffractionDataset(Dataset):
             self.data.append(df)
 
     def preprocess(self, df):
-        # Assuming your columns are named 'angles' and 'intensity'
         angles = df['angles'].values.reshape(-1, 1)
         intensity = df['intensity'].values.reshape(-1, 1)
 
@@ -22,7 +21,7 @@ class XRayDiffractionDataset(Dataset):
         angles = self.scaler.fit_transform(angles)
         intensity = self.scaler.fit_transform(intensity)
 
-        # Convert to tensor
+        
         angles = torch.tensor(angles, dtype=torch.float32)
         intensity = torch.tensor(intensity, dtype=torch.float32)
 
