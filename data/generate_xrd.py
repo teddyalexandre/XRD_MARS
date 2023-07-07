@@ -3,33 +3,13 @@ from pymatgen.analysis.diffraction.xrd import XRDCalculator
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 import numpy as np
 from scipy.special import wofz
-import pandas as pd
 import matplotlib.pyplot as plt
+
+
 
 with MPRester(api_key="bo70Q5XVKyZdImV77bFXHO2cDKdvVQ6F") as mpr:
     # first retrieve the relevant structure
     structure = mpr.get_structure_by_material_id("mp-2680")
-
-def calc_std_dev(two_theta, tau, wavelength):
-    """
-    calculate standard deviation based on angle (two theta) and domain size (tau)
-    Args:
-        two_theta: angle in two theta space
-        tau: domain size in nm
-        wavelength: x-ray wavelength in angstrom
-    Returns:
-        standard deviation for gaussian kernel
-    """
-    ## Calculate FWHM based on the Scherrer equation
-    K = 0.94 ## shape factor
-    wavelength = wavelength * 0.1 ## angstrom to nm
-    theta = np.radians(two_theta/2.) ## Bragg angle in radians
-    beta = (K * wavelength) / (np.cos(theta) * tau) # in radians
-
-    ## Convert FWHM to std deviation of gaussian
-    sigma = np.sqrt(1/(2*np.log(2)))*0.5*np.degrees(beta)
-    return sigma**2
-
 
 
 # important to use the conventional structure to ensure
@@ -43,9 +23,6 @@ calculator = XRDCalculator(wavelength="MoKa")
 pattern = calculator.get_pattern(conventional_structure)
 angles = pattern.x
 intensities = pattern.y
-
-min_angle = 5
-max_angle = 85
 
 # Prepare the data
 steps = np.linspace(min(pattern.x), max(pattern.x), num=1000)
