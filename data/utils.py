@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from mp_api.client import MPRester
 from pymatgen.analysis.diffraction.xrd import XRDCalculator

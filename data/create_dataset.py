@@ -3,7 +3,6 @@ from utils import process_material
 from joblib import Parallel, delayed
 import pandas as pd
 
-
 # Initialize the MPRester
 with MPRester(api_key="bo70Q5XVKyZdImV77bFXHO2cDKdvVQ6F") as mpr:
 
@@ -18,5 +17,4 @@ with MPRester(api_key="bo70Q5XVKyZdImV77bFXHO2cDKdvVQ6F") as mpr:
 
     # Save the dataset to a file
     df = pd.DataFrame(data)
-    print(df.head())
-    df.to_csv("dataset.csv")
+    df.to_parquet("pow_xrd.parquet")
