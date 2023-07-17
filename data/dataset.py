@@ -9,9 +9,15 @@ def get_dictionary(filepath):
     int2group = {}
     with open(filepath, 'r') as f:
         for line in f:
-            number, label = line.strip().split()  # split each line into number and label
-            int2group[int(number)] = label  # convert number to int and assign to dictionary
+            number, label = line.strip().split()
+            int2group[int(number)] = label
     return int2group
+
+
+def get_mapping(filepath):
+    int2group = get_dictionary(filepath)
+    space_group_mapping = {name: i for i, name in int2group.items()}
+    return space_group_mapping
 
 
 class XRDPatternDataset(Dataset):
