@@ -1,16 +1,24 @@
 # Import basic libraries
+import torch
+import torchvision
+import torchvision.transforms as transforms  # For data transformation
+import torch.nn as nn   # For all neural network modules and functions
+from torch.utils.data import DataLoader  # Better data management
+from torch import optim # All optimizers (SGD, Adam...)
+from sklearn.model_selection import train_test_split # For splitting the dataset into training and test datasets
+from sklearn.preprocessing import MinMaxScaler # Scaling the numerical data so that they are comparable
+
 import numpy as np
 import pandas as pd
-
-import torch.nn as nn
-from sklearn.model_selection import train_test_split
-from torch import optim
+import matplotlib.pyplot as plt
+from random import random
 
 
+# Compute the number of output features
 def conv_output_size(input_size, stride, kernel_size, padding=0):
     return int((input_size + 2*padding - kernel_size) / stride + 1)
 
-
+# Computes the size of the flattened layer at the end of the 3rd conv/pool layer structure
 def vector_size(params):
     strides = params["strides"]
     kernel_sizes = params["kernels"]
@@ -49,7 +57,7 @@ class ConvNN(nn.Module):
         # Instanciate the ReLU activation function (which introduces non-linearity)
         self.relu = nn.ReLU()
 
-        # Instanciate the softmax activation function (for the output layer)
+        # Instanciate the softmax activation function (for the output layer) if we want the probabilities
         # self.softmax = nn.Softmax(dim=1)
 
         # Instanciate the Dropout function
@@ -90,38 +98,49 @@ class ConvNN(nn.Module):
 ## From CSV file (imposed format) we train the model and see how it performs
 
 if __name__ == "__main__":
-    column_names = ["Angles", "Intensity"]
-    data = pd.read_csv("Uchucchacuaite.csv", names=column_names)
-    data.dropna(inplace=True)
-    data.head()
 
-    angles = np.array(data["Angles"].values)
-    intensity = np.array(data["Intensity"].values)
-
-    # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(angles, intensity, test_size=0.2, random_state=42)
-
-    # Define the parameters
+    # Define the hyperparameters
     batch_size = 64
     learning_rate = 0.001
     num_epochs = 10
 
-    cnn = ConvNN()
+    # Load the data (specify the path)
+    dataset = "..."
+
+    # Split the raw data into train set and test set
+    trainset, testset = train_test_split(dataset, test_size=0.25, random_state=111)
+
+    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=2)
+    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
+    
+    # Configure the device (computes on GPU or CPU)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    cnn = ConvNN().to(device)
     optimizer = optim.Adam(cnn.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
 
     for epoch in range(num_epochs):
-        inputs, labels = data
-        optimizer.zero_grad()
+        running_loss = 0.0
 
-        # Compute the forward pass
-        outputs = cnn(inputs)
+        # For each batch in the loader
+        for inputs, labels in enumerate(trainloader):
+            # Set the gradients back to 0
+            optimizer.zero_grad()
 
-        # Compute the loss function
-        loss = criterion(outputs)
+            # Apply the model
+            outputs = cnn(inputs)
 
-        # Compute the gradients
-        loss.backward()
+            # Compare between the outputs from the CNN and the labels
+            loss = criterion(outputs, labels)
 
-        # Update the weights
-        optimizer.step()
+            # Compute the gradients
+            loss.backward()
+
+            optimizer.step()
+            
+            running_loss += loss
+        
+        # Print the average loss for this epoch
+        epoch_loss = running_loss / len(trainloader)
+        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}")
