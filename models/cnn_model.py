@@ -35,7 +35,7 @@ def vector_size(params):
 class ConvNN(nn.Module):
     """Class which models the CNN -> operates on a 1D image (the XRD spectra) -> vector"""
 
-    def __init__(self, params):
+    def __init__(self, params, output_size=230):
         """Constructor of the class ConvNN : 3 convolutional/pooling layers, 3 fully connected layers"""
         super(ConvNN, self).__init__()
 
@@ -68,7 +68,7 @@ class ConvNN(nn.Module):
         S = vector_size(params)
         self.fc1 = nn.Linear(S, 2300)
         self.fc2 = nn.Linear(2300, 1150)
-        self.fc3 = nn.Linear(1150, 230)
+        self.fc3 = nn.Linear(1150, output_size)
 
     def forward(self, x):
         """Method which simulates the forward propagation in the CNN through the layers"""
