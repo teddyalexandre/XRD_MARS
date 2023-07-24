@@ -10,7 +10,7 @@ with MPRester(api_key="bo70Q5XVKyZdImV77bFXHO2cDKdvVQ6F") as mpr:
     data = []
 
     # Fetch the list of material IDs
-    material_docs = mpr.summary.search(num_chunks=1)
+    material_docs = mpr.summary.search(num_chunks=10)
 
     # Use joblib to process the materials in parallel
     data = Parallel(n_jobs=-1)(delayed(process_material)(material_doc.material_id, "bo70Q5XVKyZdImV77bFXHO2cDKdvVQ6F", 0.1, 0.1, "MoKa") for material_doc in material_docs)

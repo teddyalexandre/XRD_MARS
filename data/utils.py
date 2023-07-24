@@ -26,7 +26,7 @@ def calculate_xrd_pattern(material_id, api_key, alpha, gamma, wavelength):
     pattern = calculator.get_pattern(conventional_structure)
 
     # Prepare the data
-    steps = np.linspace(min(pattern.x), max(pattern.x), num=1000)
+    steps = np.linspace(min(pattern.x), max(pattern.x), num=10000)
     norm_signal = np.zeros_like(steps)
 
     # Replace each peak in the XRD pattern with a Voigt profile

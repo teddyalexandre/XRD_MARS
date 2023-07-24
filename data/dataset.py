@@ -8,9 +8,9 @@ from pymatgen.symmetry.groups import SpaceGroup
 def get_dictionary(filepath):
     int2group = {}
     with open(filepath, 'r') as f:
-        for line in f:
-            number, label = line.strip().split()
-            int2group[int(number)] = label
+        for i, line in enumerate(f):
+            label = line.strip()
+            int2group[i] = label
     return int2group
 
 
