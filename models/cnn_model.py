@@ -4,7 +4,10 @@ import torchvision
 import torchvision.transforms as transforms  # For data transformation
 import torch.nn as nn   # For all neural network modules and functions
 from torch.utils.data import DataLoader  # Better data management
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data.distributed import DistributedSampler
 from torch import optim # All optimizers (SGD, Adam...)
+
 from sklearn.model_selection import train_test_split # For splitting the dataset into training and test datasets
 from sklearn.preprocessing import MinMaxScaler # Scaling the numerical data so that they are comparable
 from sklearn.metrics import accuracy_score
@@ -59,58 +62,50 @@ class ConvNN(nn.Module):
         """
         super(ConvNN, self).__init__()
 
-        # Instanciate 3 convolutional layers
         kernel_sizes = params["kernels"]
         strides = params["strides"]
-        self.conv1 = nn.Conv1d(in_channels=1, out_channels=params["conv_channels"], 
-                               kernel_size=kernel_sizes[0], stride=strides[0])
-        self.conv2 = nn.Conv1d(in_channels=params["conv_channels"], out_channels=params["conv_channels"],
-                               kernel_size=kernel_sizes[1], stride=strides[1])
-        self.conv3 = nn.Conv1d(in_channels=params["conv_channels"], out_channels=params["conv_channels"],
-                               kernel_size=kernel_sizes[2], stride=strides[2])
 
-        # Instanciate 3 max pooling layers
-        self.pool1 = nn.MaxPool1d(kernel_size=3, stride=2)
-        self.pool2 = nn.MaxPool1d(kernel_size=3, stride=1)
-        self.pool3 = nn.MaxPool1d(kernel_size=3, stride=1)
+        # Instanciate 3 layers of 1D convolution/relu/pooling
+        self.layer1 = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=params["conv_channels"], 
+            kernel_size=kernel_sizes[0], stride=strides[0]),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=3, stride=2))
 
-        # Instanciate the ReLU activation function (which introduces non-linearity)
-        self.relu = nn.ReLU()
+        self.layer2 = nn.Sequential(
+            nn.Conv1d(in_channels=params["conv_channels"], out_channels=params["conv_channels"],
+            kernel_size=kernel_sizes[1], stride=strides[1]),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=3, stride=1))
 
-        # Instanciate the softmax activation function (for the output layer) if we want the probabilities
-        # self.softmax = nn.Softmax(dim=1)
+        self.layer3 = nn.Sequential(
+            nn.Conv1d(in_channels=params["conv_channels"], out_channels=params["conv_channels"],
+            kernel_size=kernel_sizes[2], stride=strides[2]),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=3, stride=1))
 
-        # Instanciate the Dropout function
-        # self.dropout1 = nn.Dropout(0.3)
-        # self.dropout2 = nn.Dropout(0.5)
+        S = vector_size(params)         # Size of the flatten layer
 
-        # Finally, instanciate 3 fully connected layers
-        S = vector_size(params)
-        self.fc1 = nn.Linear(S, 2300)
-        self.fc2 = nn.Linear(2300, 1150)
-        self.fc3 = nn.Linear(1150, output_size)
+        # Instanciate fully connected layers for classification task
+        self.fc_layers = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(S, 2300),
+            nn.Linear(2300, 1150),
+            nn.Linear(1150, output_size)
+            # nn.Softmax(dim = 1)       # If we want the probabilities as outputs
+        )
 
     def forward(self, x):
-        """Method which simulates the forward propagation in the CNN through the layers"""
-        x = self.relu(self.conv1(x))
-        # x = self.dropout1(x)
-        x = self.pool1(x)
-
-        x = self.relu(self.conv2(x))
-        # x = self.dropout1(x)
-        x = self.pool2(x)
-
-        x = self.relu(self.conv3(x))
-        # x = self.dropout1(x)
-        x = self.pool3(x)
-
-        # Fully connected layers
-        x = nn.Flatten(x)
-        x = self.fc1(x)
-        # x = self.dropout2(x)
-        x = self.fc2(x)
-        # x = self.droput2(x)
-        return self.fc3(x)
+        """Method which simulates the forward propagation in the CNN through the layers
+            Args:
+                - x : input of the CNN
+            Returns :
+                - out : output layer, output_size number of neurons (230 by default)"""
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.fc_layers(out)
+        return out
 
 ### Next step : train the model on data to ensure that it works fine
 
@@ -125,6 +120,7 @@ def train(train_loader, cnn, learning_rate, num_epochs):
     optimizer = optim.Adam(cnn.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
 
+    print("Begin training :")
     for epoch in range(num_epochs):
         running_loss = 0.0
 
@@ -150,6 +146,8 @@ def train(train_loader, cnn, learning_rate, num_epochs):
         # Print the average loss for one epoch
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}")
+    
+    print("Finished training !")
 
 
 def compute_accuracy(test_loader, cnn, num_epochs):
@@ -169,7 +167,9 @@ def compute_accuracy(test_loader, cnn, num_epochs):
         accuracy /= count
         print("Epoch %d: model accuracy %.2f%%" % (epoch, accuracy*100))
 
-## From CSV file (imposed format) we train the model and see how it performs
+
+## From CSV/Parquet file, we train the model and see how it performs
+## Looking to perform distributed data parallelism with Pytorch to speed up training
 
 if __name__ == "__main__":
 
