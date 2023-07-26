@@ -47,7 +47,7 @@ def calculate_xrd_pattern(material_id, api_key, alpha, gamma, wavelength):
         peak_intensity = pattern.y[i]
         norm_signal += peak_intensity * V(steps - peak_position, alpha, gamma)
 
-    return norm_signal, steps
+    return steps, norm_signal
 
 
 def process_material(material_id, api_key, alpha, gamma, wavelength):

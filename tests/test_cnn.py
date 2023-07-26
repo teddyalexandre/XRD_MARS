@@ -1,6 +1,4 @@
-import pytest
-from models import vector_size, conv_output_size
-
+from models.cnn_model import vector_size, conv_output_size
 
 def test_vector_size():
     parms = {

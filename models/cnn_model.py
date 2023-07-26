@@ -1,10 +1,7 @@
 # Import basic libraries
-import torch
-import torchvision
-import torchvision.transforms as transforms  # For data transformation
-import torch.nn as nn   # For all neural network modules and functions
+from torch import nn   # For all neural network modules and functions
 from torch.utils.data import DataLoader  # Better data management
-from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.nn.parallel import DistributedDataParallel as DDP    # To use data parallelism and accelerate training
 from torch.utils.data.distributed import DistributedSampler
 from torch import optim # All optimizers (SGD, Adam...)
 
@@ -19,7 +16,7 @@ from random import random
 
 
 def conv_output_size(input_size, stride, kernel_size, padding=0):
-    """Function that computes the number of output features
+    """Function that computes the size of the output feature maps
         Args:
         - input_size : number of input features
         - stride

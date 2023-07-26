@@ -16,13 +16,12 @@ with MPRester(api_key=api_teddy) as mpr:
     data = []
 
     # Fetch the list of material IDs (returns a MPDataDoc object with data inside)
-    material_docs = mpr.summary.search(material_ids=["mp-2680"], fields=["material_id", "crystal_system", "spacegroup_number"])
+    material_docs = mpr.summary.search(num_chunks=10)
 
     # Use joblib to process the materials in parallel (all CPUs)
     data = Parallel(n_jobs=-1)(delayed(process_material)(material_doc.material_id, api_teddy, 0.1, 0.1, "MoKa") for material_doc in material_docs)
 
     # Save the dataset to a Parquet or CSV file
     df = pd.DataFrame(data)
-    df.to_parquet("pow_xrd.parquet")
-    #df.to_csv("pow_xrd.csv")
-    print(df)
+    #df.to_parquet("pow_xrd.parquet")
+    df.to_csv("pow_xrd.csv")
