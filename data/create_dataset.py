@@ -19,7 +19,7 @@ with MPRester(api_key=api_teddy) as mpr:
     material_docs = mpr.summary.search(num_chunks=10)
 
     # Use joblib to process the materials in parallel (all CPUs)
-    data = Parallel(n_jobs=-1)(delayed(process_material)(material_doc.material_id, api_teddy, 0.1, 0.1, "MoKa") for material_doc in material_docs)
+    data = Parallel(n_jobs=-1)(delayed(process_material)(material_doc.material_id, api_teddy, 0.05, 0.01, 0.721) for material_doc in material_docs)
 
     # Save the dataset to a Parquet or CSV file
     df = pd.DataFrame(data)

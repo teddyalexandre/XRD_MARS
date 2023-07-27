@@ -60,13 +60,17 @@ def process_material(material_id, api_key, alpha, gamma, wavelength):
         Returns:
             dictionary with an array containing the values of the signal and the space group
     """
-    # Calculate the XRD pattern
-    norm_signal = calculate_xrd_pattern(material_id, api_key, alpha, gamma, wavelength)
+    try:
+        # Calculate the XRD pattern
+        norm_signal = calculate_xrd_pattern(material_id, api_key, alpha, gamma, wavelength)
 
-    # Fetch the space group
-    with MPRester(api_key=api_key) as mpr:
-        structure = mpr.get_structure_by_material_id(material_id)
-    sga = SpacegroupAnalyzer(structure)
-    space_group = sga.get_space_group_symbol()
+        # Fetch the space group
+        with MPRester(api_key=api_key) as mpr:
+            structure = mpr.get_structure_by_material_id(material_id)
+        sga = SpacegroupAnalyzer(structure)
+        space_group = sga.get_space_group_symbol()
 
-    return {"XRD Pattern": norm_signal, "Space Group": space_group}
+        return {"XRD Pattern": norm_signal, "Space Group": space_group}
+    except Exception as e:
+        print(f"Error processing material {material_id}: {e}")
+        return {"XRD Pattern": None, "Space Group": None}
