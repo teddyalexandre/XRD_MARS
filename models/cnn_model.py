@@ -1,12 +1,13 @@
 # Import basic libraries
-from torch import nn   # For all neural network modules and functions
+import torch
+from torch import nn  # For all neural network modules and functions
 from torch.utils.data import DataLoader  # Better data management
-from torch.nn.parallel import DistributedDataParallel as DDP    # To use data parallelism and accelerate training
+from torch.nn.parallel import DistributedDataParallel as DDP  # To use data parallelism and accelerate training
 from torch.utils.data.distributed import DistributedSampler
-from torch import optim # All optimizers (SGD, Adam...)
+from torch import optim  # All optimizers (SGD, Adam...)
 
-from sklearn.model_selection import train_test_split # For splitting the dataset into training and test datasets
-from sklearn.preprocessing import MinMaxScaler # Scaling the numerical data so that they are comparable
+from sklearn.model_selection import train_test_split  # For splitting the dataset into training and test datasets
+from sklearn.preprocessing import MinMaxScaler  # Scaling the numerical data so that they are comparable
 from sklearn.metrics import accuracy_score
 
 import numpy as np
@@ -25,7 +26,7 @@ def conv_output_size(input_size, stride, kernel_size, padding=0):
         Returns:
         - number of output features
     """
-    return int((input_size + 2*padding - kernel_size) / stride) + 1
+    return int((input_size + 2 * padding - kernel_size) / stride) + 1
 
 
 def vector_size(params):
@@ -39,13 +40,13 @@ def vector_size(params):
     strides = params["strides"]
     kernel_sizes = params["kernels"]
     input_size = params["input_size"]
-    s = conv_output_size(input_size, strides[0], kernel_sizes[0], kernel_sizes[0]/2)
+    s = conv_output_size(input_size, strides[0], kernel_sizes[0], kernel_sizes[0] / 2)
     s = conv_output_size(s, 2, 3)
-    s = conv_output_size(s, strides[1], kernel_sizes[1], kernel_sizes[1]/2)
+    s = conv_output_size(s, strides[1], kernel_sizes[1], kernel_sizes[1] / 2)
     s = conv_output_size(s, 3, 3)
-    s = conv_output_size(s, strides[2], kernel_sizes[2], kernel_sizes[2]/2)
+    s = conv_output_size(s, strides[2], kernel_sizes[2], kernel_sizes[2] / 2)
     s = conv_output_size(s, 3, 3)
-    return s*params['conv_channels']
+    return s * params['conv_channels']
 
 
 class ConvNN(nn.Module):
@@ -64,24 +65,24 @@ class ConvNN(nn.Module):
 
         # Instanciate 3 layers of 1D convolution/relu/pooling
         self.layer1 = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=params["conv_channels"], 
-            kernel_size=kernel_sizes[0], stride=strides[0]),
+            nn.Conv1d(in_channels=1, out_channels=params["conv_channels"],
+                      kernel_size=kernel_sizes[0], stride=strides[0]),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=3, stride=2))
 
         self.layer2 = nn.Sequential(
             nn.Conv1d(in_channels=params["conv_channels"], out_channels=params["conv_channels"],
-            kernel_size=kernel_sizes[1], stride=strides[1]),
+                      kernel_size=kernel_sizes[1], stride=strides[1]),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=3, stride=1))
 
         self.layer3 = nn.Sequential(
             nn.Conv1d(in_channels=params["conv_channels"], out_channels=params["conv_channels"],
-            kernel_size=kernel_sizes[2], stride=strides[2]),
+                      kernel_size=kernel_sizes[2], stride=strides[2]),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=3, stride=1))
 
-        S = vector_size(params)         # Size of the flatten layer
+        S = vector_size(params)  # Size of the flatten layer
 
         # Instanciate fully connected layers for classification task
         self.fc_layers = nn.Sequential(
@@ -103,6 +104,7 @@ class ConvNN(nn.Module):
         out = self.layer3(out)
         out = self.fc_layers(out)
         return out
+
 
 ### Next step : train the model on data to ensure that it works fine
 
@@ -137,13 +139,13 @@ def train(train_loader, cnn, learning_rate, num_epochs):
 
             # Performs a single optimization step (parameter update)
             optimizer.step()
-            
+
             running_loss += loss
-        
+
         # Print the average loss for one epoch
         epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {epoch_loss:.4f}")
-    
+        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss:.4f}")
+
     print("Finished training !")
 
 
@@ -162,14 +164,13 @@ def compute_accuracy(test_loader, cnn, num_epochs):
             accuracy += (torch.argmax(y_pred, 1) == labels).float().sum()
             count += len(labels)
         accuracy /= count
-        print("Epoch %d: model accuracy %.2f%%" % (epoch, accuracy*100))
+        print("Epoch %d: model accuracy %.2f%%" % (epoch, accuracy * 100))
 
 
 ## From CSV/Parquet file, we train the model and see how it performs
 ## Looking to perform distributed data parallelism with Pytorch to speed up training
 
 if __name__ == "__main__":
-
     # Define the hyperparameters
     batch_size = 64
     learning_rate = 0.001

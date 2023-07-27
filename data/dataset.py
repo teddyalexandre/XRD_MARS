@@ -27,20 +27,20 @@ def get_mapping(filepath):
         Returns:
             - space_group_mapping : dictionary which does the mapping between space groups and indexes"""
     int2group = get_dictionary(filepath)
-    space_group_mapping = {name: i for i, name in int2group.items()}
+    space_group_mapping = {name: i+1 for i, name in int2group.items()}
     return space_group_mapping
 
 
 class XRDPatternDataset(Dataset):
     """Class that generates the XRD pattern, the angles, the intensity and the space group to be predicted"""
-    def __init__(self, xrd_file, space_group_mapping):
+    def __init__(self, xrd_file, space_group_mapping_file):
         """Constructor of the class
             Args:
                 - xrd_file : Parquet file containing all the data
                 - space_group_mapping : dictionary with the space groups as values
         """
         self.dataframe = pd.read_parquet(xrd_file)
-        self.space_group_mapping = space_group_mapping
+        self.space_group_mapping = get_mapping(space_group_mapping_file)
 
     def __len__(self):
         """Returns the size of the dataframe (number of rows)"""
@@ -54,16 +54,17 @@ class XRDPatternDataset(Dataset):
                 - angles, intensities and space_group tensors
         """
         xrd_pattern = self.dataframe.iloc[idx, 0]
-        xrd_pattern = np.array(xrd_pattern, dtype=float)
-        intensities = torch.tensor(xrd_pattern[0])
-        angles = torch.tensor(xrd_pattern[1])
+        intensities = np.array(xrd_pattern[0], dtype=float)
+        angles = np.array(xrd_pattern[1], dtype=float)
+        intensities = torch.tensor(intensities)
+        angles = torch.tensor(angles)
         space_group = torch.tensor(self.space_group_mapping[self.dataframe.iloc[idx, 1]])
         return angles, intensities, space_group
 
 
 if __name__ == "__main__":
     print("obtaining space groups")
-    with open('./space_groups.txt', 'w') as f:
+    with open('../tests/space_groups.txt', 'w') as f:
         for i in range(1, 231):
             space_group = SpaceGroup.from_int_number(i)
             group_name = str(space_group).split(" ")[1]
