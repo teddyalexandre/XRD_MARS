@@ -40,6 +40,7 @@ def performPadding(pattern):
     new_angles = new_angles + angles
     new_intensities = new_intensities + intensities
 
+    # We pad on the right with zeros
     max_angle = angles[-1]
     if max_angle < 85:
         while new_angles[-1] < 85:

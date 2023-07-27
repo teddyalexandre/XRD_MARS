@@ -7,8 +7,6 @@ from torch.utils.data.distributed import DistributedSampler
 from torch import optim  # All optimizers (SGD, Adam...)
 
 from sklearn.model_selection import train_test_split  # For splitting the dataset into training and test datasets
-from sklearn.preprocessing import MinMaxScaler  # Scaling the numerical data so that they are comparable
-from sklearn.metrics import accuracy_score
 
 import numpy as np
 import pandas as pd
@@ -89,9 +87,8 @@ class ConvNN(nn.Module):
             nn.Flatten(),
             nn.Linear(S, 2300),
             nn.Linear(2300, 1150),
-            nn.Linear(1150, output_size)
-            # nn.Softmax(dim = 1)       # If we want the probabilities as outputs
-        )
+            nn.Linear(1150, output_size),
+            nn.Softmax(dim = 1))       # The probabilities to belong to a group space as outputs
 
     def forward(self, x):
         """Method which simulates the forward propagation in the CNN through the layers
@@ -161,7 +158,7 @@ def compute_accuracy(test_loader, cnn, num_epochs):
         count = 0
         for inputs, labels in test_loader:
             y_pred = cnn(inputs)
-            accuracy += (torch.argmax(y_pred, 1) == labels).float().sum()
+            accuracy += (torch.argmax(y_pred, dim=1) == labels).float().sum()
             count += len(labels)
         accuracy /= count
         print("Epoch %d: model accuracy %.2f%%" % (epoch, accuracy * 100))
@@ -177,7 +174,7 @@ if __name__ == "__main__":
     num_epochs = 10
 
     # Load the data (specify the path)
-    dataset = "..."
+    dataset = "../data/filename"
 
     # Split the raw data into train set and test set
     trainset, testset = train_test_split(dataset, test_size=0.25, random_state=111)
