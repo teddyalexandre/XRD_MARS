@@ -2,6 +2,7 @@ from mp_api.client import MPRester
 from utils import process_material
 from joblib import Parallel, delayed
 import pandas as pd
+from pymatgen.io.cif import CifWriter
 
 ### In this script, we use the MPRester API from Materials Project to access information from the database in a structured way
 
