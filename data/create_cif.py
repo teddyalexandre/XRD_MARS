@@ -12,7 +12,7 @@ api_teddy = "wV2nzQ5zNVhlugrbV6CSDbGYsEc2YmFU"
 with MPRester(api_key=api_teddy) as mpr:
 
     # Fetch the list of materials given their formulas
-    list_materials = ["La", "B", "La-B"]
+    list_materials = ["La-*,B-*,O-*,C-*,H-*,N-*,Al-*,Si-*,P-*,S-*,Cl-*,K-*,Na-*"]
     materials = mpr.get_structures(list_materials)
 
     # Removes the previous files in the folder cif_files
