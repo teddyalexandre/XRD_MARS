@@ -17,23 +17,24 @@ from random import random
 def conv_output_size(input_size, stride, kernel_size, padding=0):
     """Function that computes the size of the output feature maps
         Args:
-        - input_size : number of input features
-        - stride
-        - kernel_size
-        - padding, default value equal to 0
+            - input_size : number of input features
+            - stride
+            - kernel_size
+            - padding, default value equal to 0
+
         Returns:
-        - number of output features
+            - number of output features
     """
     return int((input_size + 2 * padding - kernel_size) / stride) + 1
 
 
 def vector_size(params):
-    """Function that computes the size of the flattened layer, at the end of the 3rd convolution/maxpool
-       layer structure :
+    """Function that computes the size of the flattened layer, at the end of the 3rd convolution/maxpool layer structure :
         Args:
-        - params : dictionary with all of the parameters (strides, kernel sizes, input size) of the model
+            - params : dictionary with all of the parameters (strides, kernel sizes, input size) of the model
+
         Returns:
-        - the size of the flattened layer
+            - the size of the flattened layer
     """
     strides = params["strides"]
     kernel_sizes = params["kernels"]
@@ -50,7 +51,7 @@ def vector_size(params):
 class ConvNN(nn.Module):
     """Class which models the CNN -> input is a 1D image (the XRD spectra signal), works as a vector"""
 
-    def __init__(self, params, output_size=230):
+    def __init__(self, params, output_size):
         """Constructor of the class ConvNN : 3 convolutional/pooling layers, 3 fully connected layers
             Args:
             - params : list of the parameters of the CNN (strides, kernel sizes...)
@@ -173,8 +174,8 @@ if __name__ == "__main__":
     learning_rate = 0.001
     num_epochs = 10
 
-    # Load the data (specify the path)
-    dataset = "../data/filename"
+    # Load the Parquet file
+    dataset = pd.read_parquet("./data/pow_xrd.parquet")
 
     # Split the raw data into train set and test set
     trainset, testset = train_test_split(dataset, test_size=0.25, random_state=111)
@@ -187,7 +188,14 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Instance of the class CNN
-    cnn = ConvNN().to(device)
+    params = {
+        "kernels" : [100, 50, 25],
+        "strides" : [5, 5, 2],
+        "input_size" : 10001,
+        "conv_channels" : 80
+    }
+    nb_space_groups = 230
+    cnn = ConvNN(params, nb_space_groups).to(device)
 
     # train the cnn on training set
     train(trainloader, cnn, learning_rate, num_epochs)

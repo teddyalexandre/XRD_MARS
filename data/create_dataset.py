@@ -1,28 +1,26 @@
 from mp_api.client import MPRester
-from utils import process_material
+from utils import calculate_xrd_from_cif
 from joblib import Parallel, delayed
 import pandas as pd
 from pymatgen.io.cif import CifWriter
+import glob
+import pandas as pd
+import os
 
 ### In this script, we use the MPRester API from Materials Project to access information from the database in a structured way
 
-# Both API Keys to use the API (change depending on who uses the program)
-api_anass = "bo70Q5XVKyZdImV77bFXHO2cDKdvVQ6F"
-api_teddy = "wV2nzQ5zNVhlugrbV6CSDbGYsEc2YmFU"
+files_cif = glob.glob("./data/cif_files/*.cif")
 
-# Initialize the MPRester
-with MPRester(api_key=api_teddy) as mpr:
+# Removes the previous parquet file if it exists
+try:
+    os.remove("./data/pow_xrd.parquet")
+except Exception as e:
+    pass
 
-    # Initialize an empty list to store the data
-    data = []
+# Use joblib to process the materials in parallel (all CPUs)
 
-    # Fetch the list of material IDs (returns a MPDataDoc object with data inside)
-    material_docs = mpr.summary.search(num_chunks=10)
+data = Parallel(n_jobs=-1)(delayed(calculate_xrd_from_cif)(f, 0.05, 0.01, 0.721) for f in files_cif)
 
-    # Use joblib to process the materials in parallel (all CPUs)
-    data = Parallel(n_jobs=-1)(delayed(process_material)(material_doc.material_id, api_teddy, 0.05, 0.01, 0.721) for material_doc in material_docs)
-
-    # Save the dataset to a Parquet or CSV file
-    df = pd.DataFrame(data)
-    #df.to_parquet("pow_xrd.parquet")
-    df.to_csv("pow_xrd.csv")
+# Save the dataset to a Parquet file
+df = pd.DataFrame(data)
+df.to_parquet("./data/pow_xrd.parquet")
