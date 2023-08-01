@@ -1,7 +1,4 @@
 from mp_api.client import MPRester
-from utils import process_material
-from joblib import Parallel, delayed
-import pandas as pd
 from pymatgen.io.cif import CifWriter
 import glob
 import os
@@ -14,22 +11,34 @@ path = "./data/cif_files"
 if not os.path.exists(path):
     os.makedirs(path)
 
+# Removes the previous files in the folder cif_files
+files_cif = glob.glob("./data/cif_files/*")
+for f in files_cif:
+    os.remove(f)
+
 with MPRester(api_key=api_teddy) as mpr:
 
-    # Fetch the list of materials given their formulas
-    suffix1 = "-*"
-    suffix2 = "*"
-    list_materials = ["La","B","O","C","H","P","S","U","Np","Pu"]
-    materials = mpr.get_structures(list_materials)
-
-    # Removes the previous files in the folder cif_files
-    files_cif = glob.glob("./data/cif_files/*")
-    for f in files_cif:
-        os.remove(f)
+    # Fetch the list of materials given their formulas (more than 100000 with these 25 chemical species)
+    # Sample of a few materials
+    list_materials = ["La","B","O","C","H",
+                      "Ca","Bu","Cu","Zn","Si",
+                      "U","Np","Pu","N","Na",
+                      "Mg","Al","Cl","Fe","Co",
+                      "Ni","Mn","Hg","Ac","Cr"]
     
-    # For each material, build a CIF symmetrized file
-    for i in range(len(materials)):
-        material = materials[i]
-        #material_id = mpr.get_material_ids(material.formula)
-        #print(f"Material ID : {material_id}, Material composition : {material.composition}, Space group : {material.get_space_group_info()}")
-        CifWriter(struct=material, symprec=None).write_file('./data/cif_files/{}.cif'.format(material.formula))
+    # We add a combination of these materials
+    list_full_mat = [[x, x+"-*", x+"-*-*"] for x in list_materials]
+    # Flatten the list
+    list_full_mat = [val for sub_list in list_full_mat for val in sub_list]
+
+    # We do subsamples of the list above, otherwise the API doesn't run smooth
+    for k in range(0,len(list_full_mat),5):
+        small_list = list_full_mat[k:k+5]
+        materials = mpr.get_structures(small_list)
+    
+        # For each material, build a CIF symmetrized file
+        for i in range(len(materials)):
+            material = materials[i]
+            #material_id = mpr.get_material_ids(material.formula)
+            #print(f"Material ID : {material_id}, Material composition : {material.composition}, Space group : {material.get_space_group_info()}")
+            CifWriter(struct=material, symprec=None).write_file('./data/cif_files/{}.cif'.format(material.formula))

@@ -176,6 +176,7 @@ if __name__ == "__main__":
 
     # Load the Parquet file
     dataset = pd.read_parquet("./data/pow_xrd.parquet")
+    print(dataset.head())
 
     # Split the raw data into train set and test set
     trainset, testset = train_test_split(dataset, test_size=0.25, random_state=111)

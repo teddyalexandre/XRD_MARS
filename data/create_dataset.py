@@ -1,8 +1,6 @@
-from mp_api.client import MPRester
 from utils import calculate_xrd_from_cif
 from joblib import Parallel, delayed
 import pandas as pd
-from pymatgen.io.cif import CifWriter
 import glob
 import pandas as pd
 import os
