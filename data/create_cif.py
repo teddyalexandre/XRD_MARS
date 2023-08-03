@@ -2,6 +2,7 @@ from mp_api.client import MPRester
 from pymatgen.io.cif import CifWriter
 import glob
 import os
+import pandas as pd
 
 api_anass = "bo70Q5XVKyZdImV77bFXHO2cDKdvVQ6F"
 api_teddy = "wV2nzQ5zNVhlugrbV6CSDbGYsEc2YmFU"
@@ -10,6 +11,10 @@ api_teddy = "wV2nzQ5zNVhlugrbV6CSDbGYsEc2YmFU"
 path = "./data/cif_files"
 if not os.path.exists(path):
     os.makedirs(path)
+
+# Remove the formula csv file if it exists
+if os.path.exists("./data/formula_names.csv"):
+    os.remove("./data/formula_names.csv")
 
 # Removes the previous files in the folder cif_files
 files_cif = glob.glob("./data/cif_files/*")
@@ -30,6 +35,7 @@ with MPRester(api_key=api_teddy) as mpr:
     list_full_mat = [[x, x+"-*", x+"-*-*"] for x in list_materials]
     # Flatten the list
     list_full_mat = [val for sub_list in list_full_mat for val in sub_list]
+    formula_names = []
 
     # We do subsamples of the list above, otherwise the API doesn't run smooth
     for k in range(0,len(list_full_mat),5):
@@ -42,3 +48,8 @@ with MPRester(api_key=api_teddy) as mpr:
             #material_id = mpr.get_material_ids(material.formula)
             #print(f"Material ID : {material_id}, Material composition : {material.composition}, Space group : {material.get_space_group_info()}")
             CifWriter(struct=material, symprec=None).write_file('./data/cif_files/{}.cif'.format(material.formula))
+            formula_names.append(material.formula)
+    
+    df = pd.DataFrame(formula_names, columns=["Formulas"])
+    df.to_csv("./data/formula_names.csv")
+

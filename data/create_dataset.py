@@ -21,4 +21,4 @@ data = Parallel(n_jobs=-1)(delayed(calculate_xrd_from_cif)(f, 0.05, 0.01, 0.721)
 
 # Save the dataset to a Parquet file
 df = pd.DataFrame(data)
-df.to_parquet("./data/pow_xrd.parquet")
+df.to_parquet("./data/pow_xrd.parquet", engine="pyarrow")
