@@ -1,0 +1,12 @@
+numpy
+pandas
+pymatgen
+torch
+mp_api
+joblib
+xrayutilities
+pyarrow
+fastparquet
+matplotlib
+scikit-learn
+pyxtal
