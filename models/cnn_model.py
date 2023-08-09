@@ -1,12 +1,11 @@
 # Import basic libraries
 import torch
 from torch import nn  # For all neural network modules and functions
-from torch.utils.data import DataLoader  # Better data management
+from torch.utils.data import random_split, DataLoader  # Better data management
 from torch.nn.parallel import DistributedDataParallel as DDP  # To use data parallelism and accelerate training
 from torch.utils.data.distributed import DistributedSampler
 from torch import optim  # All optimizers (SGD, Adam...)
-
-from sklearn.model_selection import train_test_split  # For splitting the dataset into training and test datasets
+from ..data.dataset import XRDPatternDataset
 
 import numpy as np
 import pandas as pd
@@ -173,17 +172,20 @@ if __name__ == "__main__":
     batch_size = 64
     learning_rate = 0.001
     num_epochs = 10
+    num_running_processes = 12
 
-    # Load the Parquet file
-    dataset = pd.read_parquet("./data/pow_xrd.parquet")
-    print(dataset.head())
+    # Create the dataset
+    dataset = XRDPatternDataset("./data/pow_xrd.parquet", "./data/space_groups.txt")
 
     # Split the raw data into train set and test set
-    trainset, testset = train_test_split(dataset, test_size=0.25, random_state=111)
+    trainset, testset = random_split(dataset, [0.75, 0.25])
+
+    print(len(trainset))
+    print(len(testset))
 
     # Create data loaders for train and test sets
-    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=2)
-    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
+    trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_running_processes)
+    testloader = DataLoader(testset, batch_size=batch_size, num_workers=num_running_processes)
 
     # Configure the device (computes on GPU or CPU)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -192,7 +194,7 @@ if __name__ == "__main__":
     params = {
         "kernels" : [100, 50, 25],
         "strides" : [5, 5, 2],
-        "input_size" : 10001,
+        "input_size" : 10000,
         "conv_channels" : 80
     }
     nb_space_groups = 230
