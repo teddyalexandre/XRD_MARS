@@ -21,7 +21,7 @@ files_cif = glob.glob("./data/cif_files/*")
 for f in files_cif:
     os.remove(f)
 
-with MPRester(api_key=api_teddy) as mpr:
+with MPRester(api_key=api_anass) as mpr:
 
     # Fetch the list of materials given their formulas (more than 100000 with these 25 chemical species)
     # Sample of a few materials

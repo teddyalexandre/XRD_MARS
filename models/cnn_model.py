@@ -1,16 +1,10 @@
 # Import basic libraries
 import torch
 from torch import nn  # For all neural network modules and functions
-from torch.utils.data import random_split, DataLoader  # Better data management
-from torch.nn.parallel import DistributedDataParallel as DDP  # To use data parallelism and accelerate training
-from torch.utils.data.distributed import DistributedSampler
 from torch import optim  # All optimizers (SGD, Adam...)
-from ..data.dataset import XRDPatternDataset
+from torch.utils.data import random_split, DataLoader  # Better data management
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from random import random
+from data import XRDPatternDataset
 
 
 def conv_output_size(input_size, stride, kernel_size, padding=0):
@@ -175,13 +169,12 @@ if __name__ == "__main__":
     num_running_processes = 12
 
     # Create the dataset
-    dataset = XRDPatternDataset("./data/pow_xrd.parquet", "./data/space_groups.txt")
+    dataset = XRDPatternDataset("./data/pow_xrd.parquet")
+
+    nb_space_groups = dataset.nb_space_group
 
     # Split the raw data into train set and test set
     trainset, testset = random_split(dataset, [0.75, 0.25])
-
-    print(len(trainset))
-    print(len(testset))
 
     # Create data loaders for train and test sets
     trainloader = DataLoader(trainset, batch_size=batch_size, num_workers=num_running_processes)
@@ -197,7 +190,6 @@ if __name__ == "__main__":
         "input_size" : 10000,
         "conv_channels" : 80
     }
-    nb_space_groups = 230
     cnn = ConvNN(params, nb_space_groups).to(device)
 
     # train the cnn on training set

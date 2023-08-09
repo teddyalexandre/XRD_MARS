@@ -1,9 +1,8 @@
 import numpy as np
-from mp_api.client import MPRester
 from pymatgen.analysis.diffraction.xrd import XRDCalculator
+from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from scipy.special import wofz
-from pymatgen.core import Structure
 
 
 def V(x, alpha, gamma):
@@ -17,69 +16,58 @@ def V(x, alpha, gamma):
     sigma = alpha / np.sqrt(2 * np.log(2))
     return np.real(wofz((x + 1j * gamma) / sigma / np.sqrt(2))) / sigma / np.sqrt(2 * np.pi)
 
-"""
-def calculate_xrd_pattern(material_id, api_key, alpha, gamma, wavelength):
-    \"\"\"Calculate the XRD pattern for a material and convolve it with a Voigt function
+
+### Script to preprocess data before feeding the CNN : Scaling, Padding, outlier management...
+
+def MinMaxScaling(signal):
+    """Scales the XRD pattern between 0 and 1 to have the same treatment between data
         Args:
-            - material_id (MPID) : ID of the current material to observe
-            - api_key (string) : API Key to use MPRester
-            - alpha, gamma (float) : parameters of the Voigt function
-            - wavelength (string/float) : radiation used to compute the xrd pattern
-
+            - signal (list) : list of floats corresponding to the intensity
         Returns:
-            - values of the signal convolved with Voigt and the points
-    \"\"\"
-    with MPRester(api_key=api_key) as mpr:
-        # Retrieve the structure
-        structure = mpr.get_structure_by_material_id(material_id)
-
-    # Use the conventional structure to ensure that peaks are labelled with the conventional Miller indices
-    sga = SpacegroupAnalyzer(structure)
-    conventional_structure = sga.get_conventional_standard_structure()
-
-    # Obtain an XRD diffraction pattern
-    calculator = XRDCalculator(wavelength=wavelength)
-    pattern = calculator.get_pattern(conventional_structure)
-
-    # Prepare the data
-    steps = np.linspace(min(pattern.x), max(pattern.x), num=10000)
-    norm_signal = np.zeros_like(steps)
-
-    # Replace each peak in the XRD pattern with a Voigt profile
-    for i in range(len(pattern.x)):
-        peak_position = pattern.x[i]
-        peak_intensity = pattern.y[i]
-        norm_signal += peak_intensity * V(steps - peak_position, alpha, gamma)
-
-    return steps, norm_signal
+            A scaled list of floats between 0 and 1
+    """
+    min_signal = min(signal)
+    max_signal = max(signal)
+    if abs(min_signal - max_signal) < 1e-3:
+        raise Exception("Difference between min and max is close from zero")
+    else:
+        return [(x - min_signal) / (max_signal - min_signal) for x in signal]
 
 
-def process_material(material_id, api_key, alpha, gamma, wavelength):
-    \"\"\"Build a dictionary with the XRD pattern for a given material and its space_group
+def performPadding(pattern):
+    """Pads the intensity with zeros where the range of the signal is not defined
+    We get a new signal with angles between 5 and 85 degrees
         Args:
-            - material_id (MPID) : ID of the current material to observe
-            - api_key (string) : API Key to use MPRester
-            - alpha, gamma (float) : parameters of the Voigt function
-            - wavelength (string/float) : radiation used to compute the xrd pattern
-
+            - pattern (tuple) : tuple of two lists, angles and intensities
         Returns:
-            dictionary with an array containing the values of the signal and the space group
-    \"\"\"
-    try:
-        # Calculate the XRD pattern
-        norm_signal = calculate_xrd_pattern(material_id, api_key, alpha, gamma, wavelength)
+            A new pattern with padded angles and intensities"""
+    angles, intensities = pattern
+    new_angles, new_intensities = [], []
+    step = angles[1] - angles[0]  # Step between two angles
+    # Build the new lists
+    min_angle = angles[0]
 
-        # Fetch the space group
-        with MPRester(api_key=api_key) as mpr:
-            structure = mpr.get_structure_by_material_id(material_id)
-        sga = SpacegroupAnalyzer(structure)
-        space_group = sga.get_space_group_symbol()
+    # We pad on the left with zeros
+    if min_angle > 5:
+        new_angles.append(5)
+        new_intensities.append(0)
+        while new_angles[-1] < min_angle:
+            new_angles.append(new_angles[-1] + step)
+            new_intensities.append(0)
 
-        return {"XRD Pattern": norm_signal, "Space Group": space_group}
-    except Exception as e:
-        print(f"Error processing material {material_id}: {e}")
-        return {"XRD Pattern": None, "Space Group": None}
-"""
+    # We concat with the intensities and angles from the unpadded pattern
+    new_angles = new_angles + angles
+    new_intensities = new_intensities + intensities
+
+    # We pad on the right with zeros
+    max_angle = angles[-1]
+    if max_angle < 85:
+        while new_angles[-1] < 85:
+            new_angles.append(new_angles[-1] + step)
+            new_intensities.append(0)
+
+    return new_angles, new_intensities
+
 
 def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
     """

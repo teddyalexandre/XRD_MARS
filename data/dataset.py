@@ -33,14 +33,19 @@ def get_mapping(filepath):
 
 class XRDPatternDataset(Dataset):
     """Class that generates the XRD pattern, the angles, the intensity and the space group to be predicted"""
-    def __init__(self, xrd_file, space_group_mapping_file):
+    def __init__(self, xrd_file):
         """Constructor of the class
             Args:
                 - xrd_file : Parquet file containing all the data
                 - space_group_mapping : dictionary with the space groups as values
         """
         self.dataframe = pd.read_parquet(xrd_file)
-        self.space_group_mapping = get_mapping(space_group_mapping_file)
+        space_groups = self.dataframe["Space Group"].unique().tolist()
+        space_group_mapping = {}
+        for i, group in enumerate(space_groups):
+            space_group_mapping[group] = i+1
+        self.space_group_mapping = space_group_mapping
+        self.nb_space_group = len(space_group_mapping)
 
     def __len__(self):
         """Returns the size of the dataframe (number of rows)"""
