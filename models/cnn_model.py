@@ -7,20 +7,6 @@ from torch.utils.data import random_split, DataLoader  # Better data management
 from data import XRDPatternDataset
 
 
-def conv_output_size(input_size, stride, kernel_size, padding=0):
-    """Function that computes the size of the output feature maps
-        Args:
-            - input_size : number of input features
-            - stride
-            - kernel_size
-            - padding, default value equal to 0
-
-        Returns:
-            - number of output features
-    """
-    return int((input_size + 2 * padding - kernel_size) / stride) + 1
-
-
 def vector_size(params):
     """Compute the size of the flattened output after passing through the convolutional layers."""
     input_size = params["input_size"]
@@ -30,11 +16,10 @@ def vector_size(params):
 
     # Compute the output size after each convolutional and pooling layer
     for i in range(3):
-        input_size = (input_size - kernel_sizes[i]) // strides[i] + 1  # Convolution
+        input_size = (input_size - kernel_sizes[i]) // strides[i] + 1 
         if i == 0:
-            input_size = (input_size - 3) // 2 + 1  # MaxPool1d with kernel_size=3 and stride=2
-        else:
-            input_size = (input_size - 3) // 1 + 1  # MaxPool1d with kernel_size=3 and stride=1
+            input_size = (input_size - 3) // 2 + 1  
+            input_size = (input_size - 3) // 1 + 1  
 
     # Multiply by the number of channels to get the flattened size
     return input_size * conv_channels
