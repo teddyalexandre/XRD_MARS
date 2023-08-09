@@ -22,23 +22,22 @@ def conv_output_size(input_size, stride, kernel_size, padding=0):
 
 
 def vector_size(params):
-    """Function that computes the size of the flattened layer, at the end of the 3rd convolution/maxpool layer structure :
-        Args:
-            - params : dictionary with all of the parameters (strides, kernel sizes, input size) of the model
-
-        Returns:
-            - the size of the flattened layer
-    """
-    strides = params["strides"]
-    kernel_sizes = params["kernels"]
+    """Compute the size of the flattened output after passing through the convolutional layers."""
     input_size = params["input_size"]
-    s = conv_output_size(input_size, strides[0], kernel_sizes[0], kernel_sizes[0] / 2)
-    s = conv_output_size(s, 2, 3)
-    s = conv_output_size(s, strides[1], kernel_sizes[1], kernel_sizes[1] / 2)
-    s = conv_output_size(s, 3, 3)
-    s = conv_output_size(s, strides[2], kernel_sizes[2], kernel_sizes[2] / 2)
-    s = conv_output_size(s, 3, 3)
-    return s * params['conv_channels']
+    kernel_sizes = params["kernels"]
+    strides = params["strides"]
+    conv_channels = params["conv_channels"]
+
+    # Compute the output size after each convolutional and pooling layer
+    for i in range(3):
+        input_size = (input_size - kernel_sizes[i]) // strides[i] + 1  # Convolution
+        if i == 0:
+            input_size = (input_size - 3) // 2 + 1  # MaxPool1d with kernel_size=3 and stride=2
+        else:
+            input_size = (input_size - 3) // 1 + 1  # MaxPool1d with kernel_size=3 and stride=1
+
+    # Multiply by the number of channels to get the flattened size
+    return input_size * conv_channels
 
 
 class ConvNN(nn.Module):
@@ -82,7 +81,7 @@ class ConvNN(nn.Module):
             nn.Linear(S, 2300),
             nn.Linear(2300, 1150),
             nn.Linear(1150, output_size),
-            nn.Softmax(dim = 1))       # The probabilities to belong to a group space as outputs
+            nn.Softmax(dim=1))  # The probabilities to belong to a group space as outputs
 
     def forward(self, x):
         """Method which simulates the forward propagation in the CNN through the layers
@@ -113,14 +112,15 @@ def train(train_loader, cnn, learning_rate, num_epochs):
     print("Begin training :")
     for epoch in range(num_epochs):
         running_loss = 0.0
+        print("epoch: ", epoch)
 
         # For each batch in the loader
-        for inputs, labels in train_loader:
+        for angles, inputs, labels in train_loader:
             # Set the gradients back to 0
             optimizer.zero_grad()
 
             # Apply the model
-            outputs = cnn(inputs)
+            outputs = cnn(torch.unsqueeze(inputs, 1))
 
             # Compare between the outputs from the CNN and the labels
             loss = criterion(outputs, labels)
@@ -150,8 +150,8 @@ def compute_accuracy(test_loader, cnn, num_epochs):
     for epoch in range(num_epochs):
         accuracy = 0
         count = 0
-        for inputs, labels in test_loader:
-            y_pred = cnn(inputs)
+        for angles, inputs, labels in test_loader:
+            y_pred = cnn(torch.unsqueeze(inputs, 0))
             accuracy += (torch.argmax(y_pred, dim=1) == labels).float().sum()
             count += len(labels)
         accuracy /= count
@@ -169,9 +169,10 @@ if __name__ == "__main__":
     num_running_processes = 12
 
     # Create the dataset
-    dataset = XRDPatternDataset("./data/pow_xrd.parquet")
+    dataset = XRDPatternDataset("../data/pow_xrd.parquet")
 
     nb_space_groups = dataset.nb_space_group
+    print("number of space groups:", nb_space_groups)
 
     # Split the raw data into train set and test set
     trainset, testset = random_split(dataset, [0.75, 0.25])
@@ -185,12 +186,13 @@ if __name__ == "__main__":
 
     # Instance of the class CNN
     params = {
-        "kernels" : [100, 50, 25],
-        "strides" : [5, 5, 2],
-        "input_size" : 10000,
-        "conv_channels" : 80
+        "kernels": [100, 50, 25],
+        "strides": [5, 5, 2],
+        "input_size": 10000,
+        "conv_channels": 64
     }
-    cnn = ConvNN(params, nb_space_groups).to(device)
+    cnn = ConvNN(params, nb_space_groups+1).to(device)
+    cnn = cnn.double()
 
     # train the cnn on training set
     train(trainloader, cnn, learning_rate, num_epochs)

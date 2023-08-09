@@ -39,7 +39,7 @@ class XRDPatternDataset(Dataset):
                 - xrd_file : Parquet file containing all the data
                 - space_group_mapping : dictionary with the space groups as values
         """
-        self.dataframe = pd.read_parquet(xrd_file)
+        self.dataframe = pd.read_parquet(xrd_file, engine="pyarrow")
         space_groups = self.dataframe["Space Group"].unique().tolist()
         space_group_mapping = {}
         for i, group in enumerate(space_groups):
@@ -63,7 +63,7 @@ class XRDPatternDataset(Dataset):
         angles = np.array(xrd_pattern[1], dtype=float)
         intensities = torch.tensor(intensities)
         angles = torch.tensor(angles)
-        space_group = torch.tensor(self.space_group_mapping[self.dataframe.iloc[idx, 1]])
+        space_group = torch.tensor(self.space_group_mapping[self.dataframe.iloc[idx, 1]], dtype=torch.long)
         return angles, intensities, space_group
 
 
