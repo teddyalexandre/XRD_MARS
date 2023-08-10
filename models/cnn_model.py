@@ -4,8 +4,7 @@ from torch import nn  # For all neural network modules and functions
 from torch import optim  # All optimizers (SGD, Adam...)
 from torch.utils.data import random_split, DataLoader  # Better data management
 
-from data import XRDPatternDataset
-
+from data.dataset import XRDPatternDataset
 
 def vector_size(params):
     """Compute the size of the flattened output after passing through the convolutional layers."""
@@ -19,6 +18,7 @@ def vector_size(params):
         input_size = (input_size - kernel_sizes[i]) // strides[i] + 1 
         if i == 0:
             input_size = (input_size - 3) // 2 + 1  
+        else:
             input_size = (input_size - 3) // 1 + 1  
 
     # Multiply by the number of channels to get the flattened size
@@ -83,7 +83,7 @@ class ConvNN(nn.Module):
 
 ### Next step : train the model on data to ensure that it works fine
 
-def train(train_loader, cnn, learning_rate, num_epochs):
+def train(train_loader, cnn, learning_rate, num_epochs, device):
     """Trains the CNN on training data
         Args:
         - train_loader = data that can be loaded in batches
@@ -104,6 +104,8 @@ def train(train_loader, cnn, learning_rate, num_epochs):
             # Set the gradients back to 0
             optimizer.zero_grad()
 
+            inputs = inputs.to(device)
+            labels = labels.to(device)
             # Apply the model
             outputs = cnn(torch.unsqueeze(inputs, 1))
 
@@ -125,7 +127,7 @@ def train(train_loader, cnn, learning_rate, num_epochs):
     print("Finished training !")
 
 
-def compute_accuracy(test_loader, cnn, num_epochs):
+def compute_accuracy(test_loader, cnn, num_epochs, device):
     """Compute the accuracy of the model
         Args:
         - test_loader : data that can be loaded in batches
@@ -136,7 +138,9 @@ def compute_accuracy(test_loader, cnn, num_epochs):
         accuracy = 0
         count = 0
         for angles, inputs, labels in test_loader:
-            y_pred = cnn(torch.unsqueeze(inputs, 0))
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            y_pred = cnn(torch.unsqueeze(inputs, 1))
             accuracy += (torch.argmax(y_pred, dim=1) == labels).float().sum()
             count += len(labels)
         accuracy /= count
@@ -154,7 +158,7 @@ if __name__ == "__main__":
     num_running_processes = 12
 
     # Create the dataset
-    dataset = XRDPatternDataset("../data/pow_xrd.parquet")
+    dataset = XRDPatternDataset("./data/pow_xrd.parquet")
 
     nb_space_groups = dataset.nb_space_group
     print("number of space groups:", nb_space_groups)
@@ -180,7 +184,7 @@ if __name__ == "__main__":
     cnn = cnn.double()
 
     # train the cnn on training set
-    train(trainloader, cnn, learning_rate, num_epochs)
+    train(trainloader, cnn, learning_rate, num_epochs, device)
 
     # Compute the accuracy of the model
-    compute_accuracy(testloader, cnn, num_epochs)
+    compute_accuracy(testloader, cnn, num_epochs, device)
