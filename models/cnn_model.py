@@ -100,7 +100,7 @@ def train(train_loader, cnn, learning_rate, num_epochs, device):
         print("epoch: ", epoch)
 
         # For each batch in the loader
-        for angles, inputs, labels in train_loader:
+        for inputs, labels in train_loader:
             # Set the gradients back to 0
             optimizer.zero_grad()
 
@@ -137,7 +137,7 @@ def compute_accuracy(test_loader, cnn, num_epochs, device):
     for epoch in range(num_epochs):
         accuracy = 0
         count = 0
-        for angles, inputs, labels in test_loader:
+        for inputs, labels in test_loader:
             inputs = inputs.to(device)
             labels = labels.to(device)
             y_pred = cnn(torch.unsqueeze(inputs, 1))

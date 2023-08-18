@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from pymatgen.analysis.diffraction.xrd import XRDCalculator
 from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
@@ -6,7 +7,7 @@ from scipy.special import wofz
 
 
 def V(x, alpha, gamma):
-    """Voigt function : convolution of Gaussian and Cauchy-Lorentz distributions
+    """Voigt function : convolution of Gaussian and Cauchy-Lorentz distributions.
         Args:
             alpha and gamma (float) : postive parameters of the Voigt function
 
@@ -20,11 +21,12 @@ def V(x, alpha, gamma):
 ### Script to preprocess data before feeding the CNN : Scaling, Padding, outlier management...
 
 def MinMaxScaling(signal):
-    """Scales the XRD pattern between 0 and 1 to have the same treatment between data
+    """Scales the XRD pattern between 0 and 1 to have the same treatment between data.
         Args:
             - signal (list) : list of floats corresponding to the intensity
+
         Returns:
-            A scaled list of floats between 0 and 1
+            - list of floats between 0 and 1 (rescaling)
     """
     min_signal = min(signal)
     max_signal = max(signal)
@@ -36,11 +38,13 @@ def MinMaxScaling(signal):
 
 def performPadding(pattern):
     """Pads the intensity with zeros where the range of the signal is not defined
-    We get a new signal with angles between 5 and 85 degrees
+       We get a new signal with angles between 5 and 85 degrees.
         Args:
             - pattern (tuple) : tuple of two lists, angles and intensities
+
         Returns:
-            A new pattern with padded angles and intensities"""
+            - new pattern with padded angles and intensities
+    """
     angles, intensities = pattern
     new_angles, new_intensities = [], []
     step = angles[1] - angles[0]  # Step between two angles
@@ -80,13 +84,14 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
         wavelength (str): The type of radiation used for the diffraction. Common choices are 'CuKa' and 'MoKa'.
 
     Returns:
-        dict: A dictionary with two keys: 'XRD Pattern' and 'Space Group'. The 'XRD Pattern' key corresponds to the
-              calculated XRD pattern convolved with a Voigt function. The 'Space Group' key corresponds to the space
-              group of the structure. If an error occurs during the calculation, both keys will have a value of None.
+        dict: A dictionary with three keys: 'Formula', 'XRD Pattern' and 'Space Group'. 'Formula' corresponds to the name of the chemical species.
+              The 'XRD Pattern' key corresponds to the calculated XRD pattern convolved with a Voigt function. 
+              The 'Space Group' key corresponds to the space group of the structure. 
+              If an error occurs during the calculation, all three keys will have a corresponding value equal tp None.
     """
     try:
         structure = Structure.from_file(cif_path)
-
+        formula_name = os.path.splitext(os.path.basename(cif_path))[0]
         # Initialize an XRD calculator with a specific radiation type
         calculator = XRDCalculator(wavelength=wavelength)
 
@@ -107,8 +112,11 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
             peak_intensity = pattern.y[i]
             norm_signal += peak_intensity * V(steps - peak_position, alpha, gamma)
 
-        return {"XRD Pattern": (steps, norm_signal), "Space Group": space_group}
+        # Do the rescaling on intensities, and perform padding so that the signal is between 5 and 85 degrees
+        norm_signal = MinMaxScaling(norm_signal)
+        steps, norm_signal = performPadding((steps, norm_signal))
+        return {"Formulas": formula_name, "Angles": steps, "Intensities": norm_signal, "Space Groups": space_group}
 
     except Exception as e:
         print(f"Error processing file {cif_path}: {e}")
-        return {"XRD Pattern": None, "Space Group": None}
+        return {"Formulas": None, "Angles": None, "Intensities": None, "Space Group": None}

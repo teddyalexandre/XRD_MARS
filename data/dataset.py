@@ -59,12 +59,13 @@ class XRDPatternDataset(Dataset):
                 - angles, intensities and space_group tensors
         """
         xrd_pattern = self.dataframe.iloc[idx, 0]
-        intensities = np.array(xrd_pattern[0], dtype=float)
-        angles = np.array(xrd_pattern[1], dtype=float)
+        formulas = np.array(xrd_pattern[0], dtype=str)
+        intensities = np.array(xrd_pattern[1], dtype=float)
+        angles = np.array(xrd_pattern[2], dtype=float)
         intensities = torch.tensor(intensities)
         angles = torch.tensor(angles)
         space_group = torch.tensor(self.space_group_mapping[self.dataframe.iloc[idx, 1]], dtype=torch.long)
-        return angles, intensities, space_group
+        return formulas, angles, intensities, space_group
 
 
 if __name__ == "__main__":
