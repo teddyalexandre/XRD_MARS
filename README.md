@@ -16,6 +16,8 @@ There is also a file 'requirements.txt', with all the python librairies required
 pip install -r requirements.txt
 ```
 
+The tasks will require to make computations on a GPU, so a virtual machine is required.
+
 The program begins by getting all of the Materials Project CIF files we can obtain, with their API. So first, run the Python script (manually or in command line) _fetch_cif.py_ (from the _data_ folder) to regroup the 118399 existing cif files from Materials Project into a folder _cif_files_.
 
 Then, from this directory, run the Python script _preprocess.py_ to generate the dataset (in a Parquet format), given the CIF files. Generating the whole dataset takes about 6 hours (with 64 GPU cores from the virtual machine), so this might take a bit of time.
