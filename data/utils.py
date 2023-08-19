@@ -36,42 +36,6 @@ def MinMaxScaling(signal):
         return [(x - min_signal) / (max_signal - min_signal) for x in signal]
 
 
-def performPadding(pattern):
-    """Pads the intensity with zeros where the range of the signal is not defined
-       We get a new signal with angles between 5 and 85 degrees.
-        Args:
-            - pattern (tuple) : tuple of two lists, angles and intensities
-
-        Returns:
-            - new pattern with padded angles and intensities
-    """
-    angles, intensities = pattern
-    new_angles, new_intensities = [], []
-    step = angles[1] - angles[0]  # Step between two angles
-    # Build the new lists
-    min_angle = angles[0]
-
-    # We pad on the left with zeros
-    if min_angle > 5:
-        new_angles.append(5)
-        new_intensities.append(0)
-        while new_angles[-1] < min_angle:
-            new_angles.append(new_angles[-1] + step)
-            new_intensities.append(0)
-
-    # We concat with the intensities and angles from the unpadded pattern
-    new_angles = new_angles + angles
-    new_intensities = new_intensities + intensities
-
-    # We pad on the right with zeros
-    max_angle = angles[-1]
-    if max_angle < 85:
-        while new_angles[-1] < 85:
-            new_angles.append(new_angles[-1] + step)
-            new_intensities.append(0)
-
-    return new_angles, new_intensities
-
 
 def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
     """
@@ -87,7 +51,7 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
         dict: A dictionary with three keys: 'Formula', 'XRD Pattern' and 'Space Group'. 'Formula' corresponds to the name of the chemical species.
               The 'XRD Pattern' key corresponds to the calculated XRD pattern convolved with a Voigt function. 
               The 'Space Group' key corresponds to the space group of the structure. 
-              If an error occurs during the calculation, all three keys will have a corresponding value equal tp None.
+              If an error occurs during the calculation, all three keys will have a corresponding value equal to None.
     """
     try:
         structure = Structure.from_file(cif_path)
@@ -98,6 +62,12 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
         sga = SpacegroupAnalyzer(structure)
         conventional_structure = sga.get_conventional_standard_structure()
         space_group = sga.get_space_group_symbol()
+        crystal_system = sga.get_crystal_system()
+
+        dict_crystal_system = {'triclinic': 1, 'monoclinic': 2, 'orthorhombic': 3,
+                               'tetragonal': 4, 'trigonal': 5, 'hexagonal': 6, 'cubic': 7}
+        
+        crystal_system_id = dict_crystal_system[crystal_system]
 
         # Calculate the XRD pattern
         pattern = calculator.get_pattern(conventional_structure)
@@ -112,11 +82,8 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
             peak_intensity = pattern.y[i]
             norm_signal += peak_intensity * V(steps - peak_position, alpha, gamma)
 
-        # Do the rescaling on intensities, and perform padding so that the signal is between 5 and 85 degrees
-        norm_signal = MinMaxScaling(norm_signal)
-        steps, norm_signal = performPadding((steps, norm_signal))
-        return {"Formulas": formula_name, "Angles": steps, "Intensities": norm_signal, "Space Groups": space_group}
+        return {"Formula": formula_name, "Angles": steps, "Intensities": norm_signal, "Space Group": space_group, "Crystal System": crystal_system_id}
 
     except Exception as e:
         print(f"Error processing file {cif_path}: {e}")
-        return {"Formulas": None, "Angles": None, "Intensities": None, "Space Group": None}
+        return {"Formula": None, "Angles": None, "Intensities": None, "Space Group": None, "Crystal System": None}

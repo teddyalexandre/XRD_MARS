@@ -10,3 +10,8 @@ fastparquet
 matplotlib
 scikit-learn
 pyxtal
+numexpr
+bottleneck>1.2.1
+mpcontribs-client
+httpcore
+pyspark

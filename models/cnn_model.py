@@ -1,9 +1,8 @@
-# Import basic libraries
-import torch
+import torch# Import basic libraries
 from torch import nn  # For all neural network modules and functions
 from torch import optim  # All optimizers (SGD, Adam...)
 from torch.utils.data import random_split, DataLoader  # Better data management
-
+import pandas as pd
 from data.dataset import XRDPatternDataset
 
 def vector_size(params):
@@ -43,19 +42,25 @@ class ConvNN(nn.Module):
         self.layer1 = nn.Sequential(
             nn.Conv1d(in_channels=1, out_channels=params["conv_channels"],
                       kernel_size=kernel_sizes[0], stride=strides[0]),
+            nn.BatchNorm1d(num_features=params["conv_channels"]),
             nn.ReLU(),
+            #nn.Dropout(p=0.2),
             nn.MaxPool1d(kernel_size=3, stride=2))
 
         self.layer2 = nn.Sequential(
             nn.Conv1d(in_channels=params["conv_channels"], out_channels=params["conv_channels"],
                       kernel_size=kernel_sizes[1], stride=strides[1]),
+            nn.BatchNorm1d(num_features=params["conv_channels"]),
             nn.ReLU(),
+            #nn.Dropout(p=0.2),
             nn.MaxPool1d(kernel_size=3, stride=1))
 
         self.layer3 = nn.Sequential(
             nn.Conv1d(in_channels=params["conv_channels"], out_channels=params["conv_channels"],
                       kernel_size=kernel_sizes[2], stride=strides[2]),
+            nn.BatchNorm1d(num_features=params["conv_channels"]),
             nn.ReLU(),
+            #nn.Dropout(p=0.2),
             nn.MaxPool1d(kernel_size=3, stride=1))
 
         S = vector_size(params)  # Size of the flatten layer
@@ -64,9 +69,11 @@ class ConvNN(nn.Module):
         self.fc_layers = nn.Sequential(
             nn.Flatten(),
             nn.Linear(S, 2300),
+            nn.Dropout(p=0.2),
             nn.Linear(2300, 1150),
-            nn.Linear(1150, output_size),
-            nn.Softmax(dim=1))  # The probabilities to belong to a group space as outputs
+            nn.Dropout(p=0.2),
+            nn.Linear(1150, output_size))
+            #nn.Softmax(dim=1))  # The probabilities to belong to a group space as outputs
 
     def forward(self, x):
         """Method which simulates the forward propagation in the CNN through the layers
@@ -97,15 +104,16 @@ def train(train_loader, cnn, learning_rate, num_epochs, device):
     print("Begin training :")
     for epoch in range(num_epochs):
         running_loss = 0.0
-        print("epoch: ", epoch)
 
         # For each batch in the loader
-        for inputs, labels in train_loader:
+        for angles, intensities, labels in train_loader:
             # Set the gradients back to 0
             optimizer.zero_grad()
 
+            inputs = intensities
             inputs = inputs.to(device)
             labels = labels.to(device)
+
             # Apply the model
             outputs = cnn(torch.unsqueeze(inputs, 1))
 
@@ -122,7 +130,7 @@ def train(train_loader, cnn, learning_rate, num_epochs, device):
 
         # Print the average loss for one epoch
         epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss:.4f}")
+        print(f"Epoch {epoch}/{num_epochs}, Loss: {epoch_loss:.4f}")
 
     print("Finished training !")
 
@@ -135,16 +143,19 @@ def compute_accuracy(test_loader, cnn, num_epochs, device):
         - num_epochs : number of iterations
     """
     for epoch in range(num_epochs):
-        accuracy = 0
+        correct = 0
         count = 0
-        for inputs, labels in test_loader:
+        for angles, intensities, labels in test_loader:
+            inputs = intensities
             inputs = inputs.to(device)
             labels = labels.to(device)
+
             y_pred = cnn(torch.unsqueeze(inputs, 1))
-            accuracy += (torch.argmax(y_pred, dim=1) == labels).float().sum()
+            pred_labels = torch.argmax(y_pred, dim = 1)
+            correct += (pred_labels == labels).float().sum()
             count += len(labels)
-        accuracy /= count
-        print("Epoch %d: model accuracy %.2f%%" % (epoch, accuracy * 100))
+        accuracy = 100 * correct / count
+        print("Epoch %d: model accuracy %.2f%%" % (epoch, accuracy))
 
 
 ## From CSV/Parquet file, we train the model and see how it performs
@@ -152,14 +163,14 @@ def compute_accuracy(test_loader, cnn, num_epochs, device):
 
 if __name__ == "__main__":
     # Define the hyperparameters
-    batch_size = 64
+    batch_size = 512
     learning_rate = 0.001
     num_epochs = 10
-    num_running_processes = 12
+    num_running_processes = 64
 
     # Create the dataset
     dataset = XRDPatternDataset("./data/pow_xrd.parquet")
-
+    
     nb_space_groups = dataset.nb_space_group
     print("number of space groups:", nb_space_groups)
 
