@@ -41,11 +41,13 @@ class XRDPatternDataset(Dataset):
         """
         self.dataframe = pd.read_parquet(xrd_file, engine="pyarrow")
         space_groups = self.dataframe["Space Group"].unique().tolist()
+        crystal_systems = self.dataframe["Crystal System"].unique().tolist()
         space_group_mapping = {}
         for i, group in enumerate(space_groups):
             space_group_mapping[group] = i+1
         self.space_group_mapping = space_group_mapping
         self.nb_space_group = len(space_group_mapping)
+        self.nb_crystal_systems = len(crystal_systems)
 
     def __len__(self):
         """Returns the size of the dataframe (number of rows)"""
@@ -64,7 +66,9 @@ class XRDPatternDataset(Dataset):
         intensities = torch.tensor(intensities)
         angles = torch.tensor(angles)
         space_group = torch.tensor(self.space_group_mapping[self.dataframe.iloc[idx, 3]], dtype=torch.long)
-        return angles, intensities, space_group
+        crystal_systems = np.array(xrd_pattern[4], dtype=int)
+        crystal_systems = torch.tensor(crystal_systems)
+        return angles, intensities, crystal_systems
 
 
 if __name__ == "__main__":

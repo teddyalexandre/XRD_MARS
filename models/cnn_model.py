@@ -2,8 +2,8 @@ import torch# Import basic libraries
 from torch import nn  # For all neural network modules and functions
 from torch import optim  # All optimizers (SGD, Adam...)
 from torch.utils.data import random_split, DataLoader  # Better data management
-import pandas as pd
 from data.dataset import XRDPatternDataset
+import matplotlib.pyplot as plt
 
 def vector_size(params):
     """Compute the size of the flattened output after passing through the convolutional layers."""
@@ -100,9 +100,9 @@ def train(train_loader, cnn, learning_rate, num_epochs, device):
     """
     optimizer = optim.Adam(cnn.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
-
+    trainloss_list = []
     print("Begin training :")
-    for epoch in range(num_epochs):
+    for epoch in range(1, num_epochs+1):
         running_loss = 0.0
 
         # For each batch in the loader
@@ -130,9 +130,11 @@ def train(train_loader, cnn, learning_rate, num_epochs, device):
 
         # Print the average loss for one epoch
         epoch_loss = running_loss / len(train_loader)
+        trainloss_list.append(epoch_loss.item())
         print(f"Epoch {epoch}/{num_epochs}, Loss: {epoch_loss:.4f}")
 
     print("Finished training !")
+    return trainloss_list
 
 
 def compute_accuracy(test_loader, cnn, num_epochs, device):
@@ -142,7 +144,8 @@ def compute_accuracy(test_loader, cnn, num_epochs, device):
         - cnn : the cnn model
         - num_epochs : number of iterations
     """
-    for epoch in range(num_epochs):
+    accuracy_list = []
+    for epoch in range(1, num_epochs+1):
         correct = 0
         count = 0
         for angles, intensities, labels in test_loader:
@@ -154,8 +157,10 @@ def compute_accuracy(test_loader, cnn, num_epochs, device):
             pred_labels = torch.argmax(y_pred, dim = 1)
             correct += (pred_labels == labels).float().sum()
             count += len(labels)
-        accuracy = 100 * correct / count
-        print("Epoch %d: model accuracy %.2f%%" % (epoch, accuracy))
+        accuracy = float(correct / count)
+        accuracy_list.append(accuracy)
+        print("Epoch %d: model accuracy %.2f" % (epoch, accuracy))
+    return accuracy_list
 
 
 ## From CSV/Parquet file, we train the model and see how it performs
@@ -163,16 +168,18 @@ def compute_accuracy(test_loader, cnn, num_epochs, device):
 
 if __name__ == "__main__":
     # Define the hyperparameters
-    batch_size = 512
+    batch_size = 256
     learning_rate = 0.001
-    num_epochs = 10
+    num_epochs = 15
     num_running_processes = 64
 
     # Create the dataset
     dataset = XRDPatternDataset("./data/pow_xrd.parquet")
     
     nb_space_groups = dataset.nb_space_group
+    nb_crystal_systems = dataset.nb_crystal_systems
     print("number of space groups:", nb_space_groups)
+    print("number of crystal systems:", nb_crystal_systems)
 
     # Split the raw data into train set and test set
     trainset, testset = random_split(dataset, [0.75, 0.25])
@@ -191,11 +198,26 @@ if __name__ == "__main__":
         "input_size": 10000,
         "conv_channels": 64
     }
-    cnn = ConvNN(params, nb_space_groups+1).to(device)
+    cnn = ConvNN(params, nb_crystal_systems+1).to(device)
     cnn = cnn.double()
 
     # train the cnn on training set
-    train(trainloader, cnn, learning_rate, num_epochs, device)
+    trainloss_list = train(trainloader, cnn, learning_rate, num_epochs, device)
 
     # Compute the accuracy of the model
-    compute_accuracy(testloader, cnn, num_epochs, device)
+    accuracy_list = compute_accuracy(testloader, cnn, num_epochs, device)
+
+    plt.subplot(1,2,1)
+    plt.plot(range(1,num_epochs+1), trainloss_list, ls = "-")
+    plt.title("Training loss curve")
+    plt.xlabel("Epoch")
+    plt.ylabel("Cross-entropy loss")
+    plt.ylim(bottom=0)
+    
+    plt.subplot(1,2,2)
+    plt.plot(range(1,num_epochs+1), accuracy_list, ls= "-")
+    plt.title("Accuracy curve")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.ylim(0,1)
+    plt.show()
