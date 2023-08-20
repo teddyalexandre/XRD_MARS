@@ -1,3 +1,7 @@
+"""
+This script contains a few useful functions that are used to treat data
+"""
+
 import numpy as np
 import os
 from pymatgen.analysis.diffraction.xrd import XRDCalculator
@@ -12,7 +16,7 @@ def V(x, alpha, gamma):
             alpha and gamma (float) : postive parameters of the Voigt function
 
         Returns:
-            Value of Voigt function at position x
+            Value of Voigt function at position x (float)
     """
     sigma = alpha / np.sqrt(2 * np.log(2))
     return np.real(wofz((x + 1j * gamma) / sigma / np.sqrt(2))) / sigma / np.sqrt(2 * np.pi)
@@ -26,7 +30,7 @@ def MinMaxScaling(signal):
             - signal (list) : list of floats corresponding to the intensity
 
         Returns:
-            - list of floats between 0 and 1 (rescaling)
+            - list of floats between 0 and 1 (rescaling) (list)
     """
     min_signal = min(signal)
     max_signal = max(signal)
@@ -48,10 +52,11 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
         wavelength (str): The type of radiation used for the diffraction. Common choices are 'CuKa' and 'MoKa'.
 
     Returns:
-        dict: A dictionary with three keys: 'Formula', 'XRD Pattern' and 'Space Group'. 'Formula' corresponds to the name of the chemical species.
-              The 'XRD Pattern' key corresponds to the calculated XRD pattern convolved with a Voigt function. 
-              The 'Space Group' key corresponds to the space group of the structure. 
-              If an error occurs during the calculation, all three keys will have a corresponding value equal to None.
+        (dict): A dictionary with the following keys: 'Formula', 'Angles', 'Intensities', 'Space Group' and 'Crystal System'.
+              'Formula' corresponds to the name of the chemical species.
+              The 'Angles' and 'Intensities' keys correspond to the calculated XRD pattern convolved with a Voigt function. 
+              The 'Space Group' key corresponds to the space group of the structure. Idem for 'Crystal System'.
+              If an error occurs during the calculation, all keys will have a corresponding value equal to None.
     """
     try:
         structure = Structure.from_file(cif_path)

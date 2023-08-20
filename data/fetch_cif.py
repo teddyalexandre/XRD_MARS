@@ -1,8 +1,12 @@
+"""
+This script allows the user to collect most of CIF files from the platform Materials Project, with the associated API,
+provided that the user has an existing API key. The CIF files are regrouped in a folder 'cif_files'.
+"""
+
 from mp_api.client import MPRester
 from pymatgen.io.cif import CifWriter
 import glob
 import os
-import pandas as pd
 
 api_anass = "bo70Q5XVKyZdImV77bFXHO2cDKdvVQ6F"
 api_teddy = "wV2nzQ5zNVhlugrbV6CSDbGYsEc2YmFU"
@@ -17,7 +21,8 @@ files_cif = glob.glob("./data/cif_files/*")
 for f in files_cif:
     os.remove(f)
 
-# With the API from Materials Project, we obtain a cif file for every material
+# With the API from Materials Project, we obtain a cif file for every material (the list provides all of the materials,
+# with the wildcards '*' representing any chemical species)
 with MPRester(api_key=api_anass) as mpr:
     materials = mpr.get_structures(['*', '*-*', '*-*-*', '*-*-*-*', '*-*-*-*-*', '*-*-*-*-*-*',
                                     '*-*-*-*-*-*-*', '*-*-*-*-*-*-*-*', '*-*-*-*-*-*-*-*-*'])

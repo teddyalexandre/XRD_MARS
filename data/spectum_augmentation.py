@@ -1,3 +1,7 @@
+"""
+This script performs data augmentation on ingested data (script unused yet)
+"""
+
 import random
 
 import numpy as np

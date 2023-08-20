@@ -1,12 +1,21 @@
-import torch# Import basic libraries
+"""
+This script writes and launches the CNN from the input data.
+"""
+
+import torch # Import basic libraries
 from torch import nn  # For all neural network modules and functions
 from torch import optim  # All optimizers (SGD, Adam...)
 from torch.utils.data import random_split, DataLoader  # Better data management
-from data.dataset import XRDPatternDataset
-import matplotlib.pyplot as plt
+from data.dataset import XRDPatternDataset  # Import custom Dataset
+import matplotlib.pyplot as plt # Plot loss and accuracy vs epochs
 
 def vector_size(params):
-    """Compute the size of the flattened output after passing through the convolutional layers."""
+    """Compute the size of the flattened output after passing through the convolutional layers.
+        Args:
+            - params (dict) : parameters of the CNN.
+        
+        Returns:
+            - the size of the flattened layer, after the last Conv/MaxPool layer (int)."""
     input_size = params["input_size"]
     kernel_sizes = params["kernels"]
     strides = params["strides"]
@@ -30,8 +39,8 @@ class ConvNN(nn.Module):
     def __init__(self, params, output_size):
         """Constructor of the class ConvNN : 3 convolutional/pooling layers, 3 fully connected layers
             Args:
-            - params : list of the parameters of the CNN (strides, kernel sizes...)
-            - output_size : number of neurons in the output layer (here 230 -> number of space groups)
+                - params : list of the parameters of the CNN (strides, kernel sizes...)
+                - output_size : number of neurons in the output layer (here 230 -> number of space groups)
         """
         super(ConvNN, self).__init__()
 
@@ -91,12 +100,15 @@ class ConvNN(nn.Module):
 ### Next step : train the model on data to ensure that it works fine
 
 def train(train_loader, cnn, learning_rate, num_epochs, device):
-    """Trains the CNN on training data
+    """Trains the CNN on training data.
         Args:
-        - train_loader = data that can be loaded in batches
-        - cnn : the cnn model
-        - learning rate : step between each iteration to minimize the loss function
-        - num_epochs : number of iterations of training
+            - train_loader (DataLoader) : data that can be loaded in batches
+            - cnn (ConvNN) : the cnn model
+            - learning_rate (float) : step between each iteration to minimize the loss function
+            - num_epochs (int) : number of iterations of training
+            - device (torch.device) : device on which the calculations are made (CUDA GPU or CPU)
+        Returns:
+            - trainloss_list (list) : list of the loss values over epochs
     """
     optimizer = optim.Adam(cnn.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
@@ -138,11 +150,13 @@ def train(train_loader, cnn, learning_rate, num_epochs, device):
 
 
 def compute_accuracy(test_loader, cnn, num_epochs, device):
-    """Compute the accuracy of the model
+    """Compute the accuracy of the model on the test dataset
         Args:
-        - test_loader : data that can be loaded in batches
-        - cnn : the cnn model
-        - num_epochs : number of iterations
+            - test_loader (DataLoader) : data that can be loaded in batches
+            - cnn (ConvNN) : the cnn model
+            - num_epochs (int) : number of iterations
+        Returns:
+            - accuracy_list (list) : list of accuracy values over epochs
     """
     accuracy_list = []
     for epoch in range(1, num_epochs+1):

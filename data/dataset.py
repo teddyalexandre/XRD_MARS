@@ -1,3 +1,8 @@
+"""
+This script regroups a few functions that are used to work with a custom Dataset, which will be the input of our convolutional neural
+network. The class inherits from Pytorch's abstract class Dataset, and implements the methods __len__ and __getitem__.
+"""
+
 import numpy as np
 import pandas as pd
 import torch
@@ -6,12 +11,14 @@ from pymatgen.symmetry.groups import SpaceGroup
 
 
 def get_dictionary(filepath):
-    """Return a dictionary with integers as values and space groups as values,
-    from the Parquet file
+    """Return a dictionary with integers as values and space groups as values, from the Parquet file.
+
         Args:
             - filepath (string) : path of the file to be parsed
+
         Returns:
-            - int2group : dictionary with labels (space groups) as values"""
+            - int2group (dict) : dictionary with labels (space groups) as values
+    """
     int2group = {}
     with open(filepath, 'r') as f:
         for i, line in enumerate(f):
@@ -21,23 +28,26 @@ def get_dictionary(filepath):
 
 
 def get_mapping(filepath):
-    """Returns the values from the dictionary
+    """Returns a dictionary with the index (incremented of 1) corresponding to a space group.
         Args:
-            - filename (string) : path of the file to be parsed
+            - filename (str) : path of the file to be parsed (here space_groups.txt)
+
         Returns:
-            - space_group_mapping : dictionary which does the mapping between space groups and indexes"""
+            - space_group_mapping (dict) : dictionary which does the mapping between space groups and indexes
+    """
     int2group = get_dictionary(filepath)
     space_group_mapping = {name: i+1 for i, name in int2group.items()}
     return space_group_mapping
 
 
 class XRDPatternDataset(Dataset):
-    """Class that generates the XRD pattern, the angles, the intensity and the space group to be predicted"""
+    """Class that inherits from abstract class Dataset, generates the materials' formulas, the XRD pattern (angles and intensity),
+       and the corresponding space group to be predicted.
+    """
     def __init__(self, xrd_file):
-        """Constructor of the class
+        """Constructor of the class XRDPatternDataset.
             Args:
-                - xrd_file : Parquet file containing all the data
-                - space_group_mapping : dictionary with the space groups as values
+                - xrd_file (str) : Parquet file containing all the data
         """
         self.dataframe = pd.read_parquet(xrd_file, engine="pyarrow")
         space_groups = self.dataframe["Space Group"].unique().tolist()
@@ -50,15 +60,19 @@ class XRDPatternDataset(Dataset):
         self.nb_crystal_systems = len(crystal_systems)
 
     def __len__(self):
-        """Returns the size of the dataframe (number of rows)"""
+        """Returns the size of the dataframe (number of rows).
+            Returns:
+                - the size (i.e. number of rows) of the dataset (int)
+        """
         return len(self.dataframe)
 
     def __getitem__(self, idx):
-        """Returns the information at row idx
+        """Access and returns the data at row index idx in the dataframe.
             Args:
                 - idx (int) : index where to get information
+
             Returns:
-                - angles, intensities and space_group tensors
+                - angles (torch.Tensor), intensities (torch.Tensor) and space group / crystal system (torch.Tensor)
         """
         xrd_pattern = self.dataframe.iloc[idx]
         intensities = np.array(xrd_pattern[2], dtype=float)
@@ -73,7 +87,7 @@ class XRDPatternDataset(Dataset):
 
 if __name__ == "__main__":
     print("obtaining space groups")
-    with open('../tests/space_groups.txt', 'w') as f:
+    with open('./data/space_groups.txt', 'w') as f:
         for i in range(1, 231):
             space_group = SpaceGroup.from_int_number(i)
             group_name = str(space_group).split(" ")[1]

@@ -1,3 +1,4 @@
 data/cif_files
+data/pow_xrd.parquet
 .vscode
 .idea/

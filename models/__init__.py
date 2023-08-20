@@ -1,1 +1,0 @@
-from .cnn_model import ConvNN, conv_output_size, vector_size
