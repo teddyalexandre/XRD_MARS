@@ -22,6 +22,26 @@ def V(x, alpha, gamma):
     return np.real(wofz((x + 1j * gamma) / sigma / np.sqrt(2))) / sigma / np.sqrt(2 * np.pi)
 
 
+def Voigt(x, crystallite_size, wavelength, theta, K=0.9):
+    """Voigt function : convolution of Gaussian and Cauchy-Lorentz distributions.
+        Args:
+            crystallite_size (float): Size of the crystallite.
+            wavelength (float): X-ray wavelength.
+            theta (float): Bragg angle.
+            K (float, optional): Scherrer constant. Defaults to 0.9.
+
+        Returns:
+            Value of Voigt function at position x (float)
+    """
+    # Calculate parameters from Scherrer equation
+    beta = K * wavelength / (crystallite_size * np.cos(theta))
+
+    # Plug the parmaters into the pseudo-voigt function
+    sigma = beta / (2 * np.sqrt(2 * np.log(2)))
+    gamma = beta / 2
+
+    return np.real(wofz((x + 1j * gamma) / sigma / np.sqrt(2))) / sigma / np.sqrt(2 * np.pi)
+
 ### Script to preprocess data before feeding the CNN : Scaling, Padding, outlier management...
 
 def MinMaxScaling(signal):
