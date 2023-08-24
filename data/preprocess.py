@@ -23,7 +23,7 @@ except Exception as e:
     pass
 
 # Use joblib to process the materials in parallel (all 64 CPUs)
-data = Parallel(n_jobs=64)(delayed(calculate_xrd_from_cif)(f, 0.05, 0.01, 0.721) for f in files_cif)
+data = Parallel(n_jobs=64)(delayed(calculate_xrd_from_cif)(f, 1.0, 0.721) for f in files_cif)
 
 # Save the dataset to a Parquet file
 pandas_df = pd.DataFrame(data)
