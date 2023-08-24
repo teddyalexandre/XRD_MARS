@@ -61,7 +61,7 @@ def MinMaxScaling(signal):
 
 
 
-def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
+def calculate_xrd_from_cif(cif_path, crystallite_size, wavelength, K=0.9):
     """
     Calculate the X-ray diffraction (XRD) pattern for a structure from a CIF file and convolve it with a Voigt function.
 
@@ -74,7 +74,7 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
     Returns:
         (dict): A dictionary with the following keys: 'Formula', 'Angles', 'Intensities', 'Space Group' and 'Crystal System'.
               'Formula' corresponds to the name of the chemical species.
-              The 'Angles' and 'Intensities' keys correspond to the calculated XRD pattern convolved with a Voigt function. 
+              The 'Angles' and 'Intensities' keys correspond to the calculated XRD pattern convolved with a Voigt function.
               The 'Space Group' key corresponds to the space group of the structure. Idem for 'Crystal System'.
               If an error occurs during the calculation, all keys will have a corresponding value equal to None.
     """
@@ -91,7 +91,7 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
 
         dict_crystal_system = {'triclinic': 1, 'monoclinic': 2, 'orthorhombic': 3,
                                'tetragonal': 4, 'trigonal': 5, 'hexagonal': 6, 'cubic': 7}
-        
+
         crystal_system_id = dict_crystal_system[crystal_system]
 
         # Calculate the XRD pattern
@@ -105,9 +105,13 @@ def calculate_xrd_from_cif(cif_path, alpha, gamma, wavelength):
         for i in range(len(pattern.x)):
             peak_position = pattern.x[i]
             peak_intensity = pattern.y[i]
-            norm_signal += peak_intensity * V(steps - peak_position, alpha, gamma)
+            theta = np.radians(peak_position / 2)
 
-        return {"Formula": formula_name, "Angles": steps, "Intensities": norm_signal, "Space Group": space_group, "Crystal System": crystal_system_id}
+            # Use the Voigt function
+            norm_signal += peak_intensity * Voigt(steps - peak_position, crystallite_size, wavelength, theta, K)
+
+        return {"Formula": formula_name, "Angles": steps, "Intensities": norm_signal, "Space Group": space_group,
+                "Crystal System": crystal_system_id}
 
     except Exception as e:
         print(f"Error processing file {cif_path}: {e}")
