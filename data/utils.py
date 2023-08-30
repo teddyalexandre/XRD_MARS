@@ -21,6 +21,11 @@ def V(x, alpha, gamma):
     sigma = alpha / np.sqrt(2 * np.log(2))
     return np.real(wofz((x + 1j * gamma) / sigma / np.sqrt(2))) / sigma / np.sqrt(2 * np.pi)
 
+def ScatteringVectorList(angles, E0=17):
+    """Returns the scattering vector for a corresponding angle"""
+    wavelength = 12.39842 / E0
+    return [(4 * np.pi * np.sin(np.radians(theta)) / wavelength) for theta in angles]
+
 
 def Voigt(x, crystallite_size, wavelength, theta, K=0.9):
     """Voigt function : convolution of Gaussian and Cauchy-Lorentz distributions.

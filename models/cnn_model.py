@@ -8,6 +8,12 @@ from torch import optim  # All optimizers (SGD, Adam...)
 from torch.utils.data import random_split, DataLoader  # Better data management
 from data.dataset import XRDPatternDataset  # Import custom Dataset
 import matplotlib.pyplot as plt  # Plot loss and accuracy vs epochs
+from torchmetrics.classification import MulticlassConfusionMatrix
+from sklearn.metrics import confusion_matrix
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import time
 
 
 def vector_size(params):
@@ -230,21 +236,32 @@ def train_and_evaluate(train_loader, test_loader, cnn, learning_rate, num_epochs
         trainloss_list.append(epoch_loss.item())
         print(f"Epoch {epoch}/{num_epochs}, Loss: {epoch_loss:.4f}")
 
-        # Evaluate accuracy after every 5 epochs
-        if epoch % 5 == 0:
-            correct = 0
-            count = 0
-            with torch.no_grad():
-                for angles, intensities, labels in test_loader:
-                    inputs = intensities.to(device)
-                    labels = labels.to(device)
-                    y_pred = cnn(torch.unsqueeze(inputs, 1))
-                    pred_labels = torch.argmax(y_pred, dim=1)
-                    correct += (pred_labels == labels).float().sum()
-                    count += len(labels)
-            accuracy = float(correct / count)
-            accuracy_list.append(accuracy)
-            print(f"Epoch {epoch}: Model accuracy: {accuracy:.2f}")
+        correct = 0
+        count = 0
+        y_true = []
+        y_pred_list = []
+        with torch.no_grad():
+            for angles, intensities, labels in test_loader:
+                inputs = intensities.to(device)
+                labels = labels.to(device)
+                y_pred = cnn(torch.unsqueeze(inputs, 1))
+                y_true.extend(labels.cpu().tolist())
+                pred_labels = torch.argmax(y_pred, dim=1)
+                y_pred_list.extend(pred_labels.cpu().tolist())
+                correct += (pred_labels == labels).float().sum()
+                count += len(labels)
+        accuracy = float(correct / count)
+        accuracy_list.append(accuracy)
+        print(f"Model accuracy: {accuracy:.2f}")
+
+        if epoch == num_epochs:
+            # Build confusion matrix
+            cf_matrix = confusion_matrix(y_true, y_pred_list)
+            df_cm = pd.DataFrame(cf_matrix / np.sum(cf_matrix, axis=1)[:, None], index = [i for i in range(1, 8)],
+                                 columns = [i for i in range(1, 8)])
+            plt.figure(figsize = (12,8))
+            sns.heatmap(df_cm, annot=True)
+            plt.savefig('./models/conf_matrix_7.png')
 
     print("Finished training and evaluation!")
     return trainloss_list, accuracy_list
@@ -265,7 +282,7 @@ def objective(trial):
     num_running_processes = 64
 
     # ... [rest of your data loading and device configuration code]
-    dataset = XRDPatternDataset("../data/data/pow_xrd.parquet")
+    dataset = XRDPatternDataset("/home/experiences/grades/alexandret/ruche/share-temp/XRD_MARS_datasets/pow_xrd_val.parquet")
 
     nb_space_groups = dataset.nb_space_group
     nb_crystal_systems = dataset.nb_crystal_systems
@@ -303,11 +320,12 @@ if __name__ == "__main__":
     # Define the hyperparameters
     batch_size = 82
     learning_rate = 0.0005012297485033033
-    num_epochs = 15
+    num_epochs = 10
     num_running_processes = 64
 
+    start = time.time()
     # Create the dataset
-    dataset = XRDPatternDataset("../data/data/pow_xrd.parquet")
+    dataset = XRDPatternDataset("/home/experiences/grades/alexandret/ruche/share-temp/XRD_MARS_datasets/pow_xrd.parquet")
 
     nb_space_groups = dataset.nb_space_group
     nb_crystal_systems = dataset.nb_crystal_systems
@@ -331,7 +349,7 @@ if __name__ == "__main__":
         "input_size": 10000,
         "conv_channels": 64
     }
-    cnn = ConvNN(params, nb_crystal_systems + 1).to(device)
+    cnn = ConvNN(params, nb_space_groups + 1).to(device)
     cnn = cnn.double()
     initialize_weights(cnn)
 
@@ -343,6 +361,13 @@ if __name__ == "__main__":
 
     trainloss_list, accuracy_list = train_and_evaluate(trainloader, testloader, cnn, learning_rate, num_epochs, device)
 
+    print("Model's state_dict:")
+    for param_tensor in cnn.state_dict():
+        print(param_tensor, "\t", cnn.state_dict()[param_tensor].size())
+
+
+    end = time.time()
+    #print(f"The CNN training and inference took : {end - start} seconds to execute, i.e. {(end - start) / 60} minutes, i.e. {(end - start) / 3600} hours.")
     # Plotting
     plt.figure(figsize=(12, 5))
 
@@ -357,9 +382,8 @@ if __name__ == "__main__":
     # Accuracy curve
     plt.subplot(1, 2, 2)
     # Since accuracy is computed every 5 epochs, we adjust the x-axis accordingly
-    accuracy_epochs = range(5, num_epochs + 1, 5)
-    plt.plot(accuracy_epochs, accuracy_list, ls="-")
-    plt.title("Accuracy curve")
+    plt.plot(range(1, num_epochs+1), accuracy_list, ls="-")
+    plt.title("Accuracy curve on test set")
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
     plt.ylim(0, 1)

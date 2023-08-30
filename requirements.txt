@@ -1,7 +1,7 @@
 numpy
-pandas
+pandas=2.7.3
 pymatgen
-torch
+torch>2.0.0
 mp_api
 joblib
 xrayutilities
@@ -14,4 +14,3 @@ numexpr
 bottleneck>1.2.1
 mpcontribs-client
 httpcore
-pyspark
