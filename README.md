@@ -24,7 +24,20 @@ The tasks will require to make computations on a GPU, so a virtual machine is re
 
 2/ Then, from this directory, run the Python script _preprocess.py_ to generate the dataset (in a Parquet format), given the CIF files. Generating the whole dataset takes about 6 hours (with 64 GPU cores from the virtual machine), so this might take a bit of time.
 
-3/ Finally, we feed the data in batches to a learning CNN so that it predicts space groups from chemical species, or their crystal systems. One can appreciate the curves from the Cross-entropy loss and the accuracy over epochs. I also provided a confusion matrix to perform better evaluation. That sums up my work for the 10 weeks here at SOLEIL.
+3/ Moreover, we feed the data in batches to a learning CNN so that it predicts space groups from chemical species, or their crystal systems. One can appreciate the curves from the Cross-entropy loss and the accuracy over epochs. I also provided a confusion matrix to perform better evaluation. To do the runnning, from the main folder (the one with data, models, and tests folders), run 
+
+```python
+python -m models.cnn_model
+```
+
+4/ Finally, I measured the time required for the CNN to do one inference. It is between 0.5 and 0.7 seconds on the CPU, which is quite reasonable. 
+
+```python
+python -m models.cnn_inference
+```
+
+That sums up my work for the 10 weeks here at SOLEIL.
+
 
 This work is deployed in SOLEIL's GitLab platform so that it can be continued later and improved to perform phase identification in a mixture of powder crystals. But before considering this, a few things should be fixed :
 
