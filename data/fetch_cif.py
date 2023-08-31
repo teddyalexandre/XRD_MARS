@@ -1,6 +1,6 @@
 """
 This script allows the user to collect most of CIF files from the platform Materials Project, with the associated API,
-provided that the user has an existing API key. The CIF files are regrouped in a folder 'cif_files'.
+provided that the user has an existing API key. The CIF files are regrouped in a folder 'cif_files' in the relative folder (data).
 """
 
 from mp_api.client import MPRester

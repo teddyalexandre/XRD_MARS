@@ -9,21 +9,28 @@ from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from scipy.special import wofz
 
-
+"""
 def V(x, alpha, gamma):
-    """Voigt function : convolution of Gaussian and Cauchy-Lorentz distributions.
+    \"\"\"Voigt function : convolution of Gaussian and Cauchy-Lorentz distributions.
         Args:
             alpha and gamma (float) : postive parameters of the Voigt function
 
         Returns:
             Value of Voigt function at position x (float)
-    """
+    \"\"\"
     sigma = alpha / np.sqrt(2 * np.log(2))
     return np.real(wofz((x + 1j * gamma) / sigma / np.sqrt(2))) / sigma / np.sqrt(2 * np.pi)
+"""
 
 def ScatteringVectorList(angles, E0=17):
-    """Returns the scattering vector for a corresponding angle"""
-    wavelength = 12.39842 / E0
+    """Returns the scattering vectors for corresponding angles (if we desire to plot the intensities in function of Q)
+        Args:
+            angles (list) : list of angles in degrees
+            E0 (float) : level of energy (default = 17 keV)
+
+        Returns:
+            Q (list) : list of corresponding scattering vector magnitudes"""
+    wavelength = 12.39842 / E0      # Wavelength associated to the X ray at energy E0
     return [(4 * np.pi * np.sin(np.radians(theta)) / wavelength) for theta in angles]
 
 
@@ -52,10 +59,10 @@ def Voigt(x, crystallite_size, wavelength, theta, K=0.9):
 def MinMaxScaling(signal):
     """Scales the XRD pattern between 0 and 1 to have the same treatment between data.
         Args:
-            - signal (list) : list of floats corresponding to the intensity
+            signal (list) : list of floats corresponding to the intensity
 
         Returns:
-            - list of floats between 0 and 1 (rescaling) (list)
+            normalizedSignal (list) : list of floats between 0 and 1
     """
     min_signal = min(signal)
     max_signal = max(signal)
@@ -68,7 +75,7 @@ def MinMaxScaling(signal):
 
 def calculate_xrd_from_cif(cif_path, crystallite_size, wavelength, K=0.9):
     """
-    Calculate the X-ray diffraction (XRD) pattern for a structure from a CIF file and convolve it with a Voigt function.
+    Calculate the X-ray diffraction (XRD) pattern for a structure given a CIF file and convolve it with a Voigt function.
 
     Args:
         cif_path (str): Path to the CIF file.

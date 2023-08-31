@@ -1,5 +1,7 @@
 """
-This script fetches data from the experimental software McXtrace
+This script fetches data from the experimental software McXtrace.
+
+Here, I only created data from the LaB6 crystal, but it should be generalized.
 """
 
 import numpy as np
@@ -8,13 +10,13 @@ import matplotlib.pyplot as plt
 from utils import MinMaxScaling
 
 
-# Read from raw data
-data = np.loadtxt("./data/detector_diffraction_1693311944.th")
+# Read from raw LaB6 data
+data = np.loadtxt("./datasets/detector_diffraction_1693311944.th")
 
 # Create DataFrame
 df = pd.DataFrame(data, columns=["Angles", "Intensities", "I_err", "N"])
 
-# We add the scattering vector magnitudes corresponding to each angle
+# We add the scattering vector magnitude column corresponding to each angle
 angles = np.array(df["Angles"])
 E0 = 16.99
 l = 12.39842 / E0
@@ -32,4 +34,7 @@ plt.ylabel("Normalized intensity (arbitrary unit)")
 plt.title("LaB6 diffraction spectra (X ray)")
 plt.show()
 
-df.to_csv('./data/lab6_spectra_modified.txt', sep=' ', index=False)
+# Write processed data in a file text (to compare space groups, 
+# one should create a Parquet file from this data and insert LaB6 space group. The CNN
+# would then predict it, once passed as a torch.Tensor)
+df.to_csv('./datasets/lab6_spectra_modified.txt', sep=' ', index=False)

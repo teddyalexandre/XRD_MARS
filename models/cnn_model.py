@@ -8,8 +8,7 @@ from torch import optim  # All optimizers (SGD, Adam...)
 from torch.utils.data import random_split, DataLoader  # Better data management
 from data.dataset import XRDPatternDataset  # Import custom Dataset
 import matplotlib.pyplot as plt  # Plot loss and accuracy vs epochs
-from torchmetrics.classification import MulticlassConfusionMatrix
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix  # Plot confusion matrix to compare predictions with ground truth labels
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -18,11 +17,13 @@ import time
 
 def vector_size(params):
     """Compute the size of the flattened output after passing through the convolutional layers.
+
         Args:
-            - params (dict) : parameters of the CNN.
+            params (dict) : parameters of the CNN
         
         Returns:
-            - the size of the flattened layer, after the last Conv/MaxPool layer (int)."""
+            flattened_size (int) : the size of the flattened layer, after the last Conv/MaxPool layer
+    """
     input_size = params["input_size"]
     kernel_sizes = params["kernels"]
     strides = params["strides"]
@@ -41,26 +42,26 @@ def vector_size(params):
 
 
 class ConvNN(nn.Module):
-    """Class which models the CNN -> input is a 1D image (the XRD spectra signal), works as a vector"""
+    """Class which models the CNN -> input is a 1D image (the XRD spectra signal), thus works as a vector"""
 
     def __init__(self, params, output_size):
         """Constructor of the class ConvNN : 3 convolutional/pooling layers, 3 fully connected layers
+
             Args:
-                - params : list of the parameters of the CNN (strides, kernel sizes...)
-                - output_size : number of neurons in the output layer (here 230 -> number of space groups)
+                params (dict) : dictionary of the parameters of the CNN (strides, kernel sizes...)
+                output_size (int) : number of neurons in the output layer (here 230 -> number of space groups or 7 -> crystal systems)
         """
         super(ConvNN, self).__init__()
 
         kernel_sizes = params["kernels"]
         strides = params["strides"]
 
-        # Instanciate 3 layers of 1D convolution/relu/pooling
+        # Instanciate 3 layers of 1D convolution/relu/pooling for feature extraction task
         self.layer1 = nn.Sequential(
             nn.Conv1d(in_channels=1, out_channels=params["conv_channels"],
                       kernel_size=kernel_sizes[0], stride=strides[0]),
             nn.BatchNorm1d(num_features=params["conv_channels"]),
             nn.ReLU(),
-            # nn.Dropout(p=0.2),
             nn.MaxPool1d(kernel_size=3, stride=2))
 
         self.layer2 = nn.Sequential(
@@ -68,7 +69,6 @@ class ConvNN(nn.Module):
                       kernel_size=kernel_sizes[1], stride=strides[1]),
             nn.BatchNorm1d(num_features=params["conv_channels"]),
             nn.ReLU(),
-            # nn.Dropout(p=0.2),
             nn.MaxPool1d(kernel_size=3, stride=1))
 
         self.layer3 = nn.Sequential(
@@ -76,7 +76,6 @@ class ConvNN(nn.Module):
                       kernel_size=kernel_sizes[2], stride=strides[2]),
             nn.BatchNorm1d(num_features=params["conv_channels"]),
             nn.ReLU(),
-            # nn.Dropout(p=0.2),
             nn.MaxPool1d(kernel_size=3, stride=1))
 
         S = vector_size(params)  # Size of the flatten layer
@@ -89,14 +88,15 @@ class ConvNN(nn.Module):
             nn.Linear(2300, 1150),
             nn.Dropout(p=0.2),
             nn.Linear(1150, output_size))
-        # nn.Softmax(dim=1))  # The probabilities to belong to a group space as outputs
 
     def forward(self, x):
         """Method which simulates the forward propagation in the CNN through the layers
+
             Args:
-                - x : input of the CNN
+                x (torch.Tensor) : input of the CNN
+
             Returns :
-                - out : output layer, output_size number of neurons (230 by default)"""
+                out (torch.Tensor) : output layer, output_size number of neurons (230 or 7)"""
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -105,7 +105,10 @@ class ConvNN(nn.Module):
 
 
 def initialize_weights(model):
-    """Initialize the weights of the model."""
+    """Initialize the weights of the model
+        Args:
+            model (nn.Module) : PyTorch model (here the CNN)
+    """
     for m in model.modules():
         if isinstance(m, nn.Conv1d):
             nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -119,98 +122,22 @@ def initialize_weights(model):
             nn.init.constant_(m.bias, 0)
 
 
-### Next step : train the model on data to ensure that it works fine
-
-def train(train_loader, cnn, learning_rate, num_epochs, device):
-    """Trains the CNN on training data.
-        Args:
-            - train_loader (DataLoader) : data that can be loaded in batches
-            - cnn (ConvNN) : the cnn model
-            - learning_rate (float) : step between each iteration to minimize the loss function
-            - num_epochs (int) : number of iterations of training
-            - device (torch.device) : device on which the calculations are made (CUDA GPU or CPU)
-        Returns:
-            - trainloss_list (list) : list of the loss values over epochs
-    """
-    optimizer = optim.Adam(cnn.parameters(), lr=learning_rate)
-    criterion = nn.CrossEntropyLoss()
-    trainloss_list = []
-    print("Begin training :")
-    for epoch in range(1, num_epochs + 1):
-        running_loss = 0.0
-
-        # For each batch in the loader
-        for angles, intensities, labels in train_loader:
-            # Set the gradients back to 0
-            optimizer.zero_grad()
-
-            inputs = intensities
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-
-            # Apply the model
-            outputs = cnn(torch.unsqueeze(inputs, 1))
-
-            # Compare between the outputs from the CNN and the labels
-            loss = criterion(outputs, labels)
-
-            # Compute the gradients
-            loss.backward()
-
-            # Performs a single optimization step (parameter update)
-            optimizer.step()
-
-            running_loss += loss
-
-        # Print the average loss for one epoch
-        epoch_loss = running_loss / len(train_loader)
-        trainloss_list.append(epoch_loss.item())
-        print(f"Epoch {epoch}/{num_epochs}, Loss: {epoch_loss:.4f}")
-
-    print("Finished training !")
-    return trainloss_list
-
-
-def compute_accuracy(test_loader, cnn, num_epochs, device):
-    """Compute the accuracy of the model on the test dataset
-        Args:
-            - test_loader (DataLoader) : data that can be loaded in batches
-            - cnn (ConvNN) : the cnn model
-            - num_epochs (int) : number of iterations
-        Returns:
-            - accuracy_list (list) : list of accuracy values over epochs
-    """
-    accuracy_list = []
-    for epoch in range(1, num_epochs + 1):
-        correct = 0
-        count = 0
-        for angles, intensities, labels in test_loader:
-            inputs = intensities
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-
-            y_pred = cnn(torch.unsqueeze(inputs, 1))
-            pred_labels = torch.argmax(y_pred, dim=1)
-            correct += (pred_labels == labels).float().sum()
-            count += len(labels)
-        accuracy = float(correct / count)
-        accuracy_list.append(accuracy)
-        print("Epoch %d: model accuracy %.2f" % (epoch, accuracy))
-    return accuracy_list
-
+### Model training and performance evaluation (accuracy, confusion matrix)
 
 def train_and_evaluate(train_loader, test_loader, cnn, learning_rate, num_epochs, device):
-    """Trains the CNN on training data and evaluates accuracy after every 5 epochs.
+    """Trains the CNN on training data and evaluates accuracy every epoch. At the end of training, plots the confusion matrix.
+
         Args:
-            - train_loader (DataLoader) : training data that can be loaded in batches
-            - test_loader (DataLoader) : test data that can be loaded in batches
-            - cnn (ConvNN) : the cnn model
-            - learning_rate (float) : step between each iteration to minimize the loss function
-            - num_epochs (int) : number of iterations of training
-            - device (torch.device) : device on which the calculations are made (CUDA GPU or CPU)
+            train_loader (DataLoader) : training data that can be loaded in batches
+            test_loader (DataLoader) : test data that can be loaded in batches
+            cnn (ConvNN) : the cnn model
+            learning_rate (float) : step between each iteration to minimize the loss function
+            num_epochs (int) : number of iterations of training
+            device (torch.device) : device on which the calculations are made (CUDA GPU or CPU)
+
         Returns:
-            - trainloss_list (list) : list of the loss values over epochs
-            - accuracy_list (list) : list of accuracy values over epochs
+            trainloss_list (list) : list of the loss values over epochs
+            accuracy_list (list) : list of accuracy values over epochs
     """
     optimizer = optim.Adam(cnn.parameters(), lr=learning_rate)
     criterion = nn.CrossEntropyLoss()
@@ -222,7 +149,7 @@ def train_and_evaluate(train_loader, test_loader, cnn, learning_rate, num_epochs
         running_loss = 0.0
 
         # Training loop
-        for angles, intensities, labels in train_loader:
+        for _, intensities, labels in train_loader:
             optimizer.zero_grad()
             inputs = intensities.to(device)
             labels = labels.to(device)
@@ -241,7 +168,7 @@ def train_and_evaluate(train_loader, test_loader, cnn, learning_rate, num_epochs
         y_true = []
         y_pred_list = []
         with torch.no_grad():
-            for angles, intensities, labels in test_loader:
+            for _, intensities, labels in test_loader:
                 inputs = intensities.to(device)
                 labels = labels.to(device)
                 y_pred = cnn(torch.unsqueeze(inputs, 1))
@@ -254,11 +181,10 @@ def train_and_evaluate(train_loader, test_loader, cnn, learning_rate, num_epochs
         accuracy_list.append(accuracy)
         print(f"Model accuracy: {accuracy:.2f}")
 
+        ### We plot the confusion matrix at the end of the training
         if epoch == num_epochs:
-            # Build confusion matrix
             cf_matrix = confusion_matrix(y_true, y_pred_list)
-            df_cm = pd.DataFrame(cf_matrix / np.sum(cf_matrix, axis=1)[:, None], index = [i for i in range(1, 8)],
-                                 columns = [i for i in range(1, 8)])
+            df_cm = pd.DataFrame(cf_matrix / np.sum(cf_matrix, axis=1)[:, None])
             plt.figure(figsize = (12,8))
             sns.heatmap(df_cm, annot=True)
             plt.savefig('./models/conf_matrix_7.png')
@@ -268,6 +194,12 @@ def train_and_evaluate(train_loader, test_loader, cnn, learning_rate, num_epochs
 
 
 def objective(trial):
+    """
+    Performs fine-tuning of the hyperparameters to find the optimal one for the CNN model
+        
+        Args:
+            trial (Optuna object) : Object that suggests the best parameters among a certain list or interval
+    """
     # Hyperparameters to be optimized
     batch_size = trial.suggest_int('batch_size', 32, 128)
     learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-3, log=True)
@@ -310,7 +242,7 @@ def objective(trial):
     cnn = cnn.double()
     initialize_weights(cnn)
 
-    trainloss_list, accuracy_list = train_and_evaluate(trainloader, testloader, cnn, learning_rate, num_epochs, device)
+    _, accuracy_list = train_and_evaluate(trainloader, testloader, cnn, learning_rate, num_epochs, device)
 
     # Return the negative accuracy because Optuna tries to minimize the objective
     return -accuracy_list[-1]
@@ -353,21 +285,17 @@ if __name__ == "__main__":
     cnn = cnn.double()
     initialize_weights(cnn)
 
-    # train the cnn on training set
-    # trainloss_list = train(trainloader, cnn, learning_rate, num_epochs, device)
-
-    # Compute the accuracy of the model
-    # accuracy_list = compute_accuracy(testloader, cnn, num_epochs, device)
-
     trainloss_list, accuracy_list = train_and_evaluate(trainloader, testloader, cnn, learning_rate, num_epochs, device)
 
+    # Print model's parameters
     print("Model's state_dict:")
     for param_tensor in cnn.state_dict():
         print(param_tensor, "\t", cnn.state_dict()[param_tensor].size())
 
 
     end = time.time()
-    #print(f"The CNN training and inference took : {end - start} seconds to execute, i.e. {(end - start) / 60} minutes, i.e. {(end - start) / 3600} hours.")
+    print(f"The CNN training and inference took : {end - start} seconds to execute, i.e. {(end - start) / 60} minutes, i.e. {(end - start) / 3600} hours.")
+    
     # Plotting
     plt.figure(figsize=(12, 5))
 

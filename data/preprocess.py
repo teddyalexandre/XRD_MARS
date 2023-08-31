@@ -1,9 +1,12 @@
 """
-This script creates the dataset as a Parquet file, given the CIF files collected with 'fetch_cif.py'
+This script creates the dataset (Parquet file format) in the relative directory (data), given the CIF files collected with 'fetch_cif.py'.
+The task is parallelized, we have to use the 64 cores available on the virtual machine.
 """
+### If we consider executing the script in a command line, we will have to provide the arguments (number of jobs...)
 
 #import argparse
 #import logging
+
 from utils import calculate_xrd_from_cif
 from joblib import Parallel, delayed
 import pandas as pd
@@ -23,7 +26,7 @@ except Exception as e:
     pass
 
 # Use joblib to process the materials in parallel (all 64 CPUs)
-data = Parallel(n_jobs=64)(delayed(calculate_xrd_from_cif)(f, 1.0, 0.721) for f in files_cif)
+data = Parallel(n_jobs=-1)(delayed(calculate_xrd_from_cif)(f, 1.0, 0.721) for f in files_cif)
 
 # Save the dataset to a Parquet file
 pandas_df = pd.DataFrame(data)

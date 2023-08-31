@@ -1,5 +1,5 @@
 """
-This script performs data augmentation on ingested data (script unused yet)
+This script performs data augmentation on ingested data (script unused yet, might serve for later to refine data)
 """
 
 import random

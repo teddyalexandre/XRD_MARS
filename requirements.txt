@@ -1,5 +1,5 @@
 numpy
-pandas=2.7.3
+pandas==2.7.3
 pymatgen
 torch>2.0.0
 mp_api
